@@ -2421,8 +2421,8 @@ class _ProfilePageState extends State<Profilepage> {
                   // Tarjeta vinotinto con scroll
                   Positioned(
                     top: 250,
-                    right: 0,
-                    left: 0,
+                    right: 10,
+                    left: 10,
                     bottom: 0,
                     child: Container(
                       padding: const EdgeInsets.all(15),
