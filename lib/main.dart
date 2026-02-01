@@ -1552,7 +1552,7 @@ class _DateTimeScreenState extends State<DateTimeScreen> {
                               Navigator.push(
                                 context,
                                 MaterialPageRoute(
-                                  builder: (context) => Profilepage(
+                                  builder: (context) => ProfilePage(
                                     city: selectedCity!,
                                     time: selectedTime,
                                   ),
@@ -1879,20 +1879,20 @@ class Thread {
   });
 }
 
-class Profilepage extends StatefulWidget {
+class ProfilePage extends StatefulWidget {
   final String city;
   final String? time;
-  const Profilepage({
+  const ProfilePage({
     super.key,
     required this.city,
     this.time,
   });
 
   @override
-  State<Profilepage> createState() => _ProfilePageState();
+  State<ProfilePage> createState() => _ProfilePageState();
 }
 
-class _ProfilePageState extends State<Profilepage> {
+class _ProfilePageState extends State<ProfilePage> {
   File? _profileImage;
   File? _coverImage;
   final ImagePicker _picker = ImagePicker();
@@ -2331,13 +2331,20 @@ class _ProfilePageState extends State<Profilepage> {
                   snap: true,
                   leading: IconButton(
                     icon: const Icon(
-                      Icons.drag_handle_rounded, // tres líneas
+                      Icons.drag_handle_rounded,
                       color: Color.fromRGBO(255, 239, 227, 0.7),
                     ),
                     onPressed: () {
-                      setState(() {
-                        _isMenuOpen = !_isMenuOpen;
-                      });
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (_) => SettingsScreen(
+                            onRestartTutorial: _restartTutorial,
+                            city: widget.city,
+                            time: widget.time,
+                          ),
+                        ),
+                      );
                     },
                   ),
                   title: Text("ישוע"),
@@ -2571,9 +2578,9 @@ class _ProfilePageState extends State<Profilepage> {
                                   context,
                                   MaterialPageRoute(
                                     builder: (_) => SettingsScreen(
-                                      onRestartTutorial: () {
-                                        _restartTutorial(); // ✅ ahora funciona
-                                      },
+                                      onRestartTutorial: _restartTutorial,
+                                      city: widget.city,
+                                      time: widget.time,
                                     ),
                                   ),
                                 );
@@ -2695,7 +2702,14 @@ class _ProfilePageState extends State<Profilepage> {
 
 class SettingsScreen extends StatelessWidget {
   final VoidCallback? onRestartTutorial;
-  const SettingsScreen({this.onRestartTutorial, super.key});
+  final String city;
+  final String? time;
+  SettingsScreen({
+    this.onRestartTutorial,
+    super.key,
+    required this.city,
+    this.time,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -2715,9 +2729,10 @@ class SettingsScreen extends StatelessWidget {
                   if (onRestartTutorial != null) {
                     onRestartTutorial!();
                   }
-                  Navigator.pop(
-                      context); // Cierra Settings y vuelve a ProfilePage
+                  Navigator.pop(context);
                 },
+                city: city,
+                time: time,
               ),
             ),
           ],
@@ -2846,8 +2861,14 @@ class _SettingsItem extends StatelessWidget {
 
 class _RightProfilePanel extends StatelessWidget {
   final VoidCallback onRestartTutorial;
+  final String city;
+  final String? time;
+
   const _RightProfilePanel({
+    super.key,
     required this.onRestartTutorial,
+    required this.city,
+    this.time,
   });
 
   @override
@@ -2932,6 +2953,15 @@ class _RightProfilePanel extends StatelessWidget {
                   await prefs.setBool('hasSeenTutorial', false);
 
                   onRestartTutorial();
+
+                  Navigator.of(context).pushReplacement(
+                    MaterialPageRoute(
+                      builder: (_) => ProfilePage(
+                        city: city,
+                        time: time,
+                      ),
+                    ),
+                  );
                 },
               ),
               const Divider(color: Colors.white24),
@@ -2946,6 +2976,7 @@ class _RightProfilePanel extends StatelessWidget {
 
 class ExploreScreen extends StatefulWidget {
   const ExploreScreen({
+    this.onRestartTutorial,
     super.key,
     this.city = "Desconocido",
     this.time,
@@ -2953,13 +2984,17 @@ class ExploreScreen extends StatefulWidget {
 
   final String city;
   final String? time;
+  final VoidCallback? onRestartTutorial;
 
   @override
   State<ExploreScreen> createState() => _ExploreScreenState();
 }
 
 class _ExploreScreenState extends State<ExploreScreen> {
-  bool _isMenuOpen = false;
+  void _restartTutorial() {
+    // lógica real aquí
+    debugPrint('Tutorial restarted');
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -2979,43 +3014,6 @@ class _ExploreScreenState extends State<ExploreScreen> {
           ),
 
           // 🔹 SIDE MENU
-          AnimatedPositioned(
-            duration: const Duration(milliseconds: 300),
-            curve: Curves.easeInOut,
-            top: 0,
-            bottom: 0,
-            left: _isMenuOpen ? 0 : -260,
-            width: 260,
-            child: Material(
-              color: const Color.fromRGBO(37, 21, 22, 1),
-              elevation: 10,
-              child: SafeArea(
-                child: ListView(
-                  padding: const EdgeInsets.symmetric(vertical: 20),
-                  children: [
-                    const SizedBox(height: 20),
-                    ListTile(
-                      leading: const Icon(Icons.settings, color: Colors.white),
-                      title: const Text(
-                        'Settings',
-                        style: TextStyle(color: Colors.white),
-                      ),
-                      onTap: () {
-                        setState(() => _isMenuOpen = false);
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (_) => const SettingsScreen(),
-                          ),
-                        );
-                      },
-                    ),
-                    const Divider(color: Colors.white24),
-                  ],
-                ),
-              ),
-            ),
-          ),
         ],
       ),
 
@@ -3036,9 +3034,16 @@ class _ExploreScreenState extends State<ExploreScreen> {
             color: Color.fromRGBO(255, 239, 227, 0.7),
           ),
           onPressed: () {
-            setState(() {
-              _isMenuOpen = !_isMenuOpen;
-            });
+            Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (_) => SettingsScreen(
+                  onRestartTutorial: _restartTutorial,
+                  city: widget.city,
+                  time: widget.time,
+                ),
+              ),
+            );
           },
         ),
         actions: [
@@ -3057,7 +3062,7 @@ class _ExploreScreenState extends State<ExploreScreen> {
                 Navigator.push(
                   context,
                   MaterialPageRoute(
-                    builder: (_) => Profilepage(city: userSelectedCity),
+                    builder: (_) => ProfilePage(city: userSelectedCity),
                   ),
                 );
               },
@@ -3108,17 +3113,22 @@ class FeedScreen extends StatefulWidget {
     super.key,
     this.city = "Desconocido",
     this.time,
+    this.onRestartTutorial,
   });
 
   final String city;
   final String? time;
+  final VoidCallback? onRestartTutorial;
 
   @override
   State<FeedScreen> createState() => _FeedScreenState();
 }
 
 class _FeedScreenState extends State<FeedScreen> {
-  bool _isMenuOpen = false;
+  void _restartTutorial() {
+    // lógica real aquí
+    debugPrint('Tutorial restarted');
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -3138,43 +3148,6 @@ class _FeedScreenState extends State<FeedScreen> {
           ),
 
           // 🔹 SIDE MENU
-          AnimatedPositioned(
-            duration: const Duration(milliseconds: 300),
-            curve: Curves.easeInOut,
-            top: 0,
-            bottom: 0,
-            left: _isMenuOpen ? 0 : -260,
-            width: 260,
-            child: Material(
-              color: const Color.fromRGBO(37, 21, 22, 1),
-              elevation: 10,
-              child: SafeArea(
-                child: ListView(
-                  padding: const EdgeInsets.symmetric(vertical: 20),
-                  children: [
-                    const SizedBox(height: 20),
-                    ListTile(
-                      leading: const Icon(Icons.settings, color: Colors.white),
-                      title: const Text(
-                        'Settings',
-                        style: TextStyle(color: Colors.white),
-                      ),
-                      onTap: () {
-                        setState(() => _isMenuOpen = false);
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (_) => const SettingsScreen(),
-                          ),
-                        );
-                      },
-                    ),
-                    const Divider(color: Colors.white24),
-                  ],
-                ),
-              ),
-            ),
-          ),
         ],
       ),
 
@@ -3195,9 +3168,16 @@ class _FeedScreenState extends State<FeedScreen> {
             color: Color.fromRGBO(255, 239, 227, 0.7),
           ),
           onPressed: () {
-            setState(() {
-              _isMenuOpen = !_isMenuOpen;
-            });
+            Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (_) => SettingsScreen(
+                  onRestartTutorial: _restartTutorial,
+                  city: widget.city,
+                  time: widget.time,
+                ),
+              ),
+            );
           },
         ),
         actions: [
@@ -3216,7 +3196,7 @@ class _FeedScreenState extends State<FeedScreen> {
                 Navigator.push(
                   context,
                   MaterialPageRoute(
-                    builder: (_) => Profilepage(city: userSelectedCity),
+                    builder: (_) => ProfilePage(city: userSelectedCity),
                   ),
                 );
               },
@@ -3267,17 +3247,22 @@ class ChatScreen extends StatefulWidget {
     super.key,
     this.city = "Desconocido",
     this.time,
+    this.onRestartTutorial,
   });
 
   final String city;
   final String? time;
+  final VoidCallback? onRestartTutorial;
 
   @override
   State<ChatScreen> createState() => _ChatScreenState();
 }
 
 class _ChatScreenState extends State<ChatScreen> {
-  bool _isMenuOpen = false;
+  void _restartTutorial() {
+    // lógica real aquí
+    debugPrint('Tutorial restarted');
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -3297,7 +3282,7 @@ class _ChatScreenState extends State<ChatScreen> {
           ),
 
           // 🔹 SIDE MENU
-          AnimatedPositioned(
+          /*AnimatedPositioned(
             duration: const Duration(milliseconds: 300),
             curve: Curves.easeInOut,
             top: 0,
@@ -3313,13 +3298,24 @@ class _ChatScreenState extends State<ChatScreen> {
                   children: [
                     const SizedBox(height: 20),
                     ListTile(
-                      leading: const Icon(Icons.settings, color: Colors.white),
+                      leading: const Icon(
+                        Icons.settings,
+                        color: Colors.white,
+                      ),
                       title: const Text(
                         'Settings',
-                        style: TextStyle(color: Colors.white),
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontSize: 16,
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                      trailing: const Icon(
+                        Icons.arrow_forward_ios,
+                        size: 16,
+                        color: Colors.white54,
                       ),
                       onTap: () {
-                        setState(() => _isMenuOpen = false);
                         Navigator.push(
                           context,
                           MaterialPageRoute(
@@ -3333,7 +3329,7 @@ class _ChatScreenState extends State<ChatScreen> {
                 ),
               ),
             ),
-          ),
+          ),*/
         ],
       ),
 
@@ -3354,9 +3350,16 @@ class _ChatScreenState extends State<ChatScreen> {
             color: Color.fromRGBO(255, 239, 227, 0.7),
           ),
           onPressed: () {
-            setState(() {
-              _isMenuOpen = !_isMenuOpen;
-            });
+            Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (_) => SettingsScreen(
+                  onRestartTutorial: _restartTutorial,
+                  city: widget.city,
+                  time: widget.time,
+                ),
+              ),
+            );
           },
         ),
         actions: [
@@ -3375,7 +3378,7 @@ class _ChatScreenState extends State<ChatScreen> {
                 Navigator.push(
                   context,
                   MaterialPageRoute(
-                    builder: (_) => Profilepage(city: userSelectedCity),
+                    builder: (_) => ProfilePage(city: userSelectedCity),
                   ),
                 );
               },
