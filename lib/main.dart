@@ -2798,16 +2798,22 @@ class _LeftSettingsPanel extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      color:
-          const Color.fromARGB(255, 11, 11, 11), // 👈 COLOR DEL PANEL IZQUIERDO
-      child: Padding(
-        padding: const EdgeInsets.all(22),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const SizedBox(height: 30),
-          ],
+    return GestureDetector(
+      behavior:
+          HitTestBehavior.opaque, // 👈 asegura que toda el área sea clickable
+      onTap: () {
+        Navigator.pop(context); // 👈 vuelve a la pantalla anterior
+      },
+      child: Container(
+        color: const Color.fromARGB(255, 11, 11, 11),
+        child: Padding(
+          padding: const EdgeInsets.all(22),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: const [
+              SizedBox(height: 30),
+            ],
+          ),
         ),
       ),
     );
@@ -2865,7 +2871,6 @@ class _RightProfilePanel extends StatelessWidget {
   final String? time;
 
   const _RightProfilePanel({
-    super.key,
     required this.onRestartTutorial,
     required this.city,
     this.time,
@@ -2882,7 +2887,7 @@ class _RightProfilePanel extends StatelessWidget {
         bottomLeft: Radius.circular(28),
       ),
       child: Container(
-        color: const Color(0xFF4A1F2A),
+        color: Color.fromRGBO(37, 21, 22, 1),
         child: Padding(
           padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 40),
           child: Column(
@@ -3034,14 +3039,25 @@ class _ExploreScreenState extends State<ExploreScreen> {
             color: Color.fromRGBO(255, 239, 227, 0.7),
           ),
           onPressed: () {
-            Navigator.push(
-              context,
-              MaterialPageRoute(
-                builder: (_) => SettingsScreen(
+            Navigator.of(context).push(
+              PageRouteBuilder(
+                transitionDuration: const Duration(milliseconds: 300),
+                pageBuilder: (_, __, ___) => SettingsScreen(
                   onRestartTutorial: _restartTutorial,
                   city: widget.city,
                   time: widget.time,
                 ),
+                transitionsBuilder: (_, animation, secondaryAnimation, child) {
+                  final slideAnimation = Tween<Offset>(
+                    begin: const Offset(1, -0), // 👈 entra desde la izquierda
+                    end: Offset.zero,
+                  ).animate(animation);
+
+                  return SlideTransition(
+                    position: slideAnimation,
+                    child: child,
+                  );
+                },
               ),
             );
           },
