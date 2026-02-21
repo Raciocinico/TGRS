@@ -18,6 +18,8 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:curved_navigation_bar/curved_navigation_bar.dart';
 import 'package:showcaseview/showcaseview.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:syncfusion_flutter_chat/chat.dart';
+import 'package:intl/intl.dart';
 
 Future<UserCredential?> signInWithGoogle() async {
   final GoogleSignInAccount? googleUser = await GoogleSignIn().signIn();
@@ -3263,31 +3265,105 @@ class ChatScreen extends StatefulWidget {
     super.key,
     this.city = "Desconocido",
     this.time,
-    this.onRestartTutorial,
   });
 
   final String city;
   final String? time;
-  final VoidCallback? onRestartTutorial;
 
   @override
   State<ChatScreen> createState() => _ChatScreenState();
 }
 
+// --- Data Models ---
+class Contact {
+  final String id;
+  final String name;
+  final String lastMessage;
+  final DateTime lastMessageDate;
+  final ImageProvider avatar;
+
+  const Contact({
+    required this.id,
+    required this.name,
+    required this.lastMessage,
+    required this.lastMessageDate,
+    required this.avatar,
+  });
+}
+
+enum FeedType { notification, thread, photo }
+
+class FeedItem {
+  final String id;
+  final Contact contact;
+  final FeedType type;
+  final String? content;
+  final String? imageUrl;
+  final DateTime timestamp;
+
+  FeedItem({
+    required this.id,
+    required this.contact,
+    required this.type,
+    this.content,
+    this.imageUrl,
+    required this.timestamp,
+  });
+}
+
+// --- Global Sample Data ---
+final DateTime now = DateTime.now();
+final List<Contact> sampleContacts = [
+  Contact(
+    id: 'a2c4-56h8-9x01-2a3d',
+    name: 'Kike',
+    lastMessage: 'True! How about your wamitas?',
+    lastMessageDate: now.subtract(const Duration(minutes: 5)),
+    avatar: const AssetImage('assets/images/Profile1.png'),
+  ),
+  Contact(
+    id: '5f9b-3c7d-1e2f-4h5j',
+    name: 'Alice',
+    lastMessage: 'See you tomorrow at 9 AM.',
+    lastMessageDate: now.subtract(const Duration(hours: 1)),
+    avatar: const AssetImage('assets/images/Profile2.png'),
+  ),
+  Contact(
+    id: '1a2b-3c4d-5e6f-7g8h',
+    name: 'Bob',
+    lastMessage: 'The new design looks great!',
+    lastMessageDate: now.subtract(const Duration(hours: 3)),
+    avatar: const AssetImage('assets/images/Profile3.png'),
+  ),
+  Contact(
+    id: 'c1d2-e3f4-g5h6-i7j8',
+    name: 'Charlie',
+    lastMessage: 'Can we reschedule the meeting?',
+    lastMessageDate: now.subtract(const Duration(hours: 8)),
+    avatar: const AssetImage('assets/images/Profile4.png'),
+  ),
+  Contact(
+    id: 'k9l0-m1n2-o3p4-q5r6',
+    name: 'Diana Prince',
+    lastMessage: 'On my way!',
+    lastMessageDate: now.subtract(const Duration(days: 1)),
+    avatar: const AssetImage('assets/images/Profile5.png'),
+  ),
+];
+
+@override
+State<ChatScreen> createState() => _ChatScreenState();
+
 class _ChatScreenState extends State<ChatScreen> {
-  void _restartTutorial() {
-    // lógica real aquí
-    debugPrint('Tutorial restarted');
-  }
+  bool _isMenuOpen = false;
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       extendBody: true,
-
       body: Stack(
         children: [
-          // 🔹 FONDO
+          // 🔹 BACKGROUND
           Container(
             decoration: const BoxDecoration(
               image: DecorationImage(
@@ -3297,8 +3373,11 @@ class _ChatScreenState extends State<ChatScreen> {
             ),
           ),
 
+          // 🔹 TAB CONTENT (Main Screen)
+          const MainScreenContent(),
+
           // 🔹 SIDE MENU
-          /*AnimatedPositioned(
+          AnimatedPositioned(
             duration: const Duration(milliseconds: 300),
             curve: Curves.easeInOut,
             top: 0,
@@ -3314,97 +3393,52 @@ class _ChatScreenState extends State<ChatScreen> {
                   children: [
                     const SizedBox(height: 20),
                     ListTile(
-                      leading: const Icon(
-                        Icons.settings,
-                        color: Colors.white,
-                      ),
-                      title: const Text(
-                        'Settings',
-                        style: TextStyle(
-                          color: Colors.white,
-                          fontSize: 16,
-                          fontWeight: FontWeight.w500,
-                        ),
-                      ),
-                      trailing: const Icon(
-                        Icons.arrow_forward_ios,
-                        size: 16,
-                        color: Colors.white54,
-                      ),
-                      onTap: () {
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (_) => const SettingsScreen(),
-                          ),
-                        );
-                      },
+                      leading: const Icon(Icons.settings, color: Colors.white),
+                      title: const Text('Settings',
+                          style: TextStyle(color: Colors.white)),
+                      onTap: () => setState(() => _isMenuOpen = false),
                     ),
                     const Divider(color: Colors.white24),
                   ],
                 ),
               ),
             ),
-          ),*/
+          ),
         ],
       ),
-
-      // 🔹 APPBAR
       appBar: AppBar(
-        title: const Text(
-          "ישוע",
-          style: TextStyle(
-            color: Color.fromRGBO(255, 239, 227, 0.9),
-            fontSize: 16,
-            fontWeight: FontWeight.w600,
-          ),
-        ),
+        title: const Text("ישוע",
+            style: TextStyle(
+                color: Color.fromRGBO(255, 239, 227, 0.9),
+                fontSize: 16,
+                fontWeight: FontWeight.w600)),
         centerTitle: true,
         leading: IconButton(
-          icon: const Icon(
-            Icons.drag_handle_rounded,
-            color: Color.fromRGBO(255, 239, 227, 0.7),
-          ),
-          onPressed: () {
-            Navigator.push(
-              context,
-              MaterialPageRoute(
-                builder: (_) => SettingsScreen(
-                  onRestartTutorial: _restartTutorial,
-                  city: widget.city,
-                  time: widget.time,
-                ),
-              ),
-            );
-          },
+          icon: const Icon(Icons.drag_handle_rounded,
+              color: Color.fromRGBO(255, 239, 227, 0.7)),
+          onPressed: () => setState(() => _isMenuOpen = !_isMenuOpen),
         ),
         actions: [
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 25),
-            child: IconButton(
-              icon: const Icon(
-                Icons.account_circle_rounded,
-                color: Color.fromRGBO(255, 239, 227, 0.5),
-              ),
-              onPressed: () {
-                // Aquí `userSelectedCity` es la ciudad que el usuario eligió
-                String userSelectedCity =
-                    ""; // ejemplo, puede venir de un TextField o picker
+          IconButton(
+            icon: const Icon(Icons.account_circle_rounded,
+                color: Color.fromRGBO(255, 239, 227, 0.5)),
+            onPressed: () {
+              // Aquí `userSelectedCity` es la ciudad que el usuario eligió
+              String userSelectedCity =
+                  ""; // ejemplo, puede venir de un TextField o picker
 
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (_) => ProfilePage(city: userSelectedCity),
-                  ),
-                );
-              },
-            ),
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (_) => ProfilePage(city: userSelectedCity),
+                ),
+              );
+            },
           ),
+          const SizedBox(width: 10),
         ],
         backgroundColor: const Color.fromRGBO(37, 21, 22, 1),
       ),
-
-      // 🔹 CURVED NAV BAR (EL TUYO)
       bottomNavigationBar: CurvedNavigationBar(
         index: 2,
         buttonBackgroundColor: const Color.fromRGBO(58, 27, 45, 1),
@@ -3435,6 +3469,353 @@ class _ChatScreenState extends State<ChatScreen> {
             );
           }
         },
+      ),
+    );
+  }
+}
+
+// --- Tab Controller Layout ---
+class MainScreenContent extends StatelessWidget {
+  const MainScreenContent({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return DefaultTabController(
+      length: 3,
+      child: NestedScrollView(
+        headerSliverBuilder: (context, innerBoxIsScrolled) {
+          return [
+            SliverAppBar(
+              automaticallyImplyLeading: false,
+              backgroundColor: const Color.fromRGBO(45, 6, 9, 1),
+              pinned: true,
+              toolbarHeight: 0, // AppBar logic is handled by ChatScreen
+              bottom: const TabBar(
+                indicatorColor: Color.fromRGBO(255, 239, 227, 1),
+                labelColor: Color.fromRGBO(255, 239, 227, 1),
+                unselectedLabelColor: Colors.white54,
+                tabs: [
+                  Tab(icon: Icon(Icons.message), text: "Chats"),
+                  Tab(icon: Icon(Icons.call), text: "Calls"),
+                  Tab(icon: Icon(Icons.circle_outlined), text: "Feed"),
+                ],
+              ),
+            ),
+          ];
+        },
+        body: const TabBarView(
+          children: [
+            ChatsTab(),
+            CallsTab(),
+            NotificationsTab(),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+// --- Chats Tab Implementation ---
+class ChatsTab extends StatelessWidget {
+  const ChatsTab({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    final stories = List.generate(12, (index) => "User ${index + 1}");
+
+    return Container(
+      color: const Color.fromRGBO(45, 6, 9, 1),
+      child: Column(
+        children: [
+          SizedBox(
+            height: 110,
+            child: ListView.builder(
+              scrollDirection: Axis.horizontal,
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+              itemCount: stories.length + 1,
+              itemBuilder: (context, index) {
+                if (index == 0) return _buildAddStoryItem();
+                return _buildStoryItem(stories[index - 1], index > 6);
+              },
+            ),
+          ),
+          const Divider(color: Color.fromRGBO(255, 239, 227, 0.1), height: 1),
+          Expanded(
+            child: ListView.separated(
+              itemCount: sampleContacts.length,
+              separatorBuilder: (_, __) => const Divider(color: Colors.white10),
+              itemBuilder: (context, index) {
+                final contact = sampleContacts[index];
+                return ListTile(
+                  leading: CircleAvatar(backgroundImage: contact.avatar),
+                  title: Text(contact.name,
+                      style: const TextStyle(color: Colors.white)),
+                  subtitle: Text(contact.lastMessage,
+                      style: const TextStyle(color: Colors.white70),
+                      maxLines: 1),
+                  trailing: Text(
+                      DateFormat.jm().format(contact.lastMessageDate),
+                      style:
+                          const TextStyle(color: Colors.white54, fontSize: 12)),
+                  onTap: () => Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                          builder: (_) => ChatSample(
+                              contactName: contact.name,
+                              targetContact: contact))),
+                );
+              },
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildAddStoryItem() {
+    return Padding(
+      padding: const EdgeInsets.only(right: 15),
+      child: Column(children: [
+        Stack(children: [
+          const CircleAvatar(
+              radius: 28,
+              backgroundColor: Colors.grey,
+              child: Icon(Icons.person, color: Colors.white)),
+          Positioned(
+              bottom: 0,
+              right: 0,
+              child: Container(
+                  decoration: const BoxDecoration(
+                      color: Colors.blue, shape: BoxShape.circle),
+                  child: const Icon(Icons.add, color: Colors.white, size: 16))),
+        ]),
+        const Text("Add Story",
+            style: TextStyle(color: Colors.white70, fontSize: 11))
+      ]),
+    );
+  }
+
+  Widget _buildStoryItem(String name, bool isSeen) {
+    return Padding(
+      padding: const EdgeInsets.only(right: 15),
+      child: Column(children: [
+        Container(
+          padding: const EdgeInsets.all(2.5),
+          decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              border: Border.all(
+                  color: isSeen ? Colors.white24 : Colors.blue, width: 2.5)),
+          child: Opacity(
+              opacity: isSeen ? 0.4 : 1.0,
+              child: const CircleAvatar(
+                  radius: 26, backgroundColor: Colors.blueGrey)),
+        ),
+        Text(name,
+            style: TextStyle(
+                color: isSeen ? Colors.white38 : Colors.white, fontSize: 11)),
+      ]),
+    );
+  }
+}
+
+// --- Calls Tab Implementation ---
+class CallsTab extends StatelessWidget {
+  const CallsTab({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      color: const Color.fromRGBO(45, 6, 9, 1),
+      child: ListView.builder(
+        itemCount: sampleContacts.length,
+        itemBuilder: (context, index) {
+          final contact = sampleContacts[index];
+          return ListTile(
+            leading: CircleAvatar(backgroundImage: contact.avatar),
+            title:
+                Text(contact.name, style: const TextStyle(color: Colors.white)),
+            subtitle: Row(children: [
+              const Icon(Icons.call_received, size: 16, color: Colors.green),
+              const SizedBox(width: 5),
+              Text(DateFormat('MMM d • h:mm a').format(now),
+                  style: const TextStyle(color: Colors.white70)),
+            ]),
+            trailing: const Icon(Icons.phone,
+                color: Color.fromRGBO(255, 239, 227, 0.9)),
+          );
+        },
+      ),
+    );
+  }
+}
+
+// --- Feed/Notifications Tab Implementation ---
+class NotificationsTab extends StatefulWidget {
+  const NotificationsTab({super.key});
+  @override
+  State<NotificationsTab> createState() => _NotificationsTabState();
+}
+
+class _NotificationsTabState extends State<NotificationsTab> {
+  late List<FeedItem> feedItems;
+
+  @override
+  void initState() {
+    super.initState();
+    feedItems = [
+      FeedItem(
+          id: 'f1',
+          contact: sampleContacts[0],
+          type: FeedType.notification,
+          content: "Mentioned you in a comment",
+          timestamp: now),
+      FeedItem(
+          id: 'f2',
+          contact: sampleContacts[1],
+          type: FeedType.thread,
+          content: "Does anyone know if the coffee shop is open?",
+          timestamp: now),
+    ];
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      color: const Color.fromRGBO(58, 27, 22, 0.3),
+      padding: const EdgeInsets.all(12),
+      child: feedItems.isEmpty
+          ? const Center(
+              child: Text("Done!", style: TextStyle(color: Colors.white)))
+          : Stack(
+              children: feedItems
+                  .asMap()
+                  .entries
+                  .map((e) => _buildDismissibleCard(e.key, e.value))
+                  .toList()),
+    );
+  }
+
+  Widget _buildDismissibleCard(int index, FeedItem item) {
+    if (index != feedItems.length - 1)
+      return Transform.scale(scale: 0.95, child: _buildFeedCard(item));
+    return Dismissible(
+      key: Key(item.id),
+      onDismissed: (_) => setState(() => feedItems.removeAt(index)),
+      background: _buildSwipeBanner(
+          label: "READ", color: Colors.blue, alignment: Alignment.centerLeft),
+      secondaryBackground: _buildSwipeBanner(
+          label: "UNREAD",
+          color: Colors.orange,
+          alignment: Alignment.centerRight),
+      child: _buildFeedCard(item),
+    );
+  }
+
+  Widget _buildSwipeBanner(
+      {required String label,
+      required Color color,
+      required Alignment alignment}) {
+    return Container(
+      alignment: alignment,
+      padding: const EdgeInsets.symmetric(horizontal: 20),
+      decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(30),
+          color: color.withOpacity(0.5)),
+      child: Text(label,
+          style: const TextStyle(
+              color: Colors.white, fontWeight: FontWeight.bold, fontSize: 32)),
+    );
+  }
+
+  Widget _buildFeedCard(FeedItem item) {
+    return Container(
+      width: double.infinity,
+      decoration: BoxDecoration(
+          color: const Color.fromRGBO(45, 6, 9, 1),
+          borderRadius: BorderRadius.circular(30)),
+      child: Column(children: [
+        ListTile(
+          leading: CircleAvatar(backgroundImage: item.contact.avatar),
+          title: Text(item.contact.name,
+              style: const TextStyle(
+                  color: Colors.white, fontWeight: FontWeight.bold)),
+          subtitle: Text(DateFormat('jm').format(item.timestamp),
+              style: const TextStyle(color: Colors.white38)),
+        ),
+        Expanded(
+            child: Center(
+                child: Text(item.content ?? "",
+                    style: const TextStyle(color: Colors.white, fontSize: 18),
+                    textAlign: TextAlign.center))),
+        const Padding(
+            padding: EdgeInsets.all(10),
+            child: Icon(Icons.favorite_border, color: Colors.redAccent)),
+      ]),
+    );
+  }
+}
+
+// --- Syncfusion Chat Detail Screen ---
+class ChatSample extends StatefulWidget {
+  final String contactName;
+  final Contact targetContact;
+  const ChatSample(
+      {super.key, required this.contactName, required this.targetContact});
+
+  @override
+  State<ChatSample> createState() => _ChatSampleState();
+}
+
+class _ChatSampleState extends State<ChatSample> {
+  late List<ChatMessage> _messages;
+  final ChatAuthor currentUser = const ChatAuthor(id: 'me', name: 'Santi');
+
+  @override
+  void initState() {
+    super.initState();
+    _messages = [
+      ChatMessage(
+          text: "Hey ${widget.contactName}!",
+          time: DateTime.now(),
+          author: currentUser),
+      ChatMessage(
+          text: widget.targetContact.lastMessage,
+          time: DateTime.now(),
+          author: ChatAuthor(id: 'them', name: widget.contactName)),
+    ];
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(
+          title: Text(widget.contactName),
+          backgroundColor: const Color.fromRGBO(45, 6, 9, 1)),
+      body: SfChat(
+        messages: _messages,
+        outgoingUser: currentUser.id,
+        actionButton: ChatActionButton(
+            onPressed: (msg) => setState(() => _messages.add(ChatMessage(
+                text: msg, time: DateTime.now(), author: currentUser)))),
+      ),
+    );
+  }
+}
+
+// --- Utils ---
+class CurvedNavigationBarPlaceholder extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      height: 60,
+      color: Colors.black,
+      child: const Row(
+        mainAxisAlignment: MainAxisAlignment.spaceAround,
+        children: [
+          Icon(Icons.public_rounded, color: Colors.white70),
+          Icon(Icons.home, color: Colors.white),
+          Icon(Icons.chat, color: Colors.white70),
+        ],
       ),
     );
   }
