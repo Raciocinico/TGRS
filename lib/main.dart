@@ -18,6 +18,8 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:curved_navigation_bar/curved_navigation_bar.dart';
 import 'package:showcaseview/showcaseview.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:intl/intl.dart';
+import 'package:syncfusion_flutter_chat/chat.dart';
 
 Future<UserCredential?> signInWithGoogle() async {
   final GoogleSignInAccount? googleUser = await GoogleSignIn().signIn();
@@ -276,14 +278,14 @@ class _HomeScreenState extends State<HomeScreen> {
             left: 0,
             right: 0,
             child: Center(
-              child: Container(
+              child: SizedBox(
                 width: 280, // Ancho fijo
                 child: ToggleSwitch(
                   minWidth: 140,
                   cornerRadius: 20.0,
                   activeBgColors: [
-                    [const Color.fromARGB(255, 0, 0, 0)!],
-                    [const Color.fromARGB(255, 0, 0, 0)!]
+                    [const Color.fromARGB(255, 0, 0, 0)],
+                    [const Color.fromARGB(255, 0, 0, 0)]
                   ],
                   activeFgColor: Colors.white,
                   inactiveBgColor: Color.fromRGBO(54, 15, 19, 1),
@@ -1047,8 +1049,8 @@ class _HomeContentState extends State<HomeContent> {
                     minWidth: 140,
                     cornerRadius: 20.0,
                     activeBgColors: [
-                      [const Color.fromARGB(255, 0, 0, 0)!],
-                      [const Color.fromARGB(255, 0, 0, 0)!]
+                      [const Color.fromARGB(255, 0, 0, 0)],
+                      [const Color.fromARGB(255, 0, 0, 0)]
                     ],
                     activeFgColor: Colors.white,
                     inactiveBgColor: Color.fromRGBO(54, 15, 19, 1),
@@ -2358,7 +2360,7 @@ class _ProfilePageState extends State<Profilepage> {
                       ),
                     ),
                   ],
-                  backgroundColor: Color.fromRGBO(37, 21, 22, 1),
+                  backgroundColor: Color.fromRGBO(45, 6, 9, 1),
                   titleTextStyle: TextStyle(
                     color: Color.fromRGBO(255, 239, 227, 0.7),
                     fontWeight: FontWeight.bold,
@@ -2551,7 +2553,7 @@ class _ProfilePageState extends State<Profilepage> {
                     left: _isMenuOpen ? 0 : -260,
                     width: 260,
                     child: Material(
-                      color: const Color.fromRGBO(37, 21, 22, 1),
+                      color: const Color.fromRGBO(45, 6, 9, 1),
                       elevation: 10,
                       child: SafeArea(
                         child: ListView(
@@ -2987,7 +2989,7 @@ class _ExploreScreenState extends State<ExploreScreen> {
             left: _isMenuOpen ? 0 : -260,
             width: 260,
             child: Material(
-              color: const Color.fromRGBO(37, 21, 22, 1),
+              color: const Color.fromRGBO(45, 6, 9, 1),
               elevation: 10,
               child: SafeArea(
                 child: ListView(
@@ -3064,7 +3066,7 @@ class _ExploreScreenState extends State<ExploreScreen> {
             ),
           ),
         ],
-        backgroundColor: const Color.fromRGBO(37, 21, 22, 1),
+        backgroundColor: const Color.fromRGBO(45, 6, 9, 1),
       ),
 
       // 🔹 CURVED NAV BAR (EL TUYO)
@@ -3146,7 +3148,7 @@ class _FeedScreenState extends State<FeedScreen> {
             left: _isMenuOpen ? 0 : -260,
             width: 260,
             child: Material(
-              color: const Color.fromRGBO(37, 21, 22, 1),
+              color: const Color.fromRGBO(45, 6, 9, 1),
               elevation: 10,
               child: SafeArea(
                 child: ListView(
@@ -3223,7 +3225,7 @@ class _FeedScreenState extends State<FeedScreen> {
             ),
           ),
         ],
-        backgroundColor: const Color.fromRGBO(37, 21, 22, 1),
+        backgroundColor: const Color.fromRGBO(45, 6, 9, 1),
       ),
 
       // 🔹 CURVED NAV BAR (EL TUYO)
@@ -3276,6 +3278,157 @@ class ChatScreen extends StatefulWidget {
   State<ChatScreen> createState() => _ChatScreenState();
 }
 
+// --- Data Models ---
+class Contact {
+  final String id;
+  final String name;
+  final String lastMessage;
+  final DateTime lastMessageDate;
+  final ImageProvider avatar;
+
+  const Contact({
+    required this.id,
+    required this.name,
+    required this.lastMessage,
+    required this.lastMessageDate,
+    required this.avatar,
+  });
+}
+
+enum FeedType { notification, thread, photo }
+
+class FeedItem {
+  final String id;
+  // Assuming Contact is defined in your main file as before
+  final Contact contact; 
+  final FeedType type;
+  final String? content;
+  final String? imageUrl;
+  final DateTime timestamp;
+
+  FeedItem({
+    required this.id,
+    required this.contact,
+    required this.type,
+    this.content,
+    this.imageUrl,
+    required this.timestamp,
+  });
+}
+
+// --- Global Sample Data ---
+final DateTime now = DateTime.now();
+final List<Contact> sampleContacts = [
+  Contact(
+    id: 'a2c4-56h8-9x01-2a3d',
+    name: 'Kike',
+    lastMessage: 'True! How about your wamitas?',
+    lastMessageDate: now.subtract(const Duration(minutes: 5)),
+    avatar: const AssetImage('assets/images/Profile1.png'),
+  ),
+  Contact(
+    id: '5f9b-3c7d-1e2f-4h5j',
+    name: 'Alice',
+    lastMessage: 'See you tomorrow at 9 AM.',
+    lastMessageDate: now.subtract(const Duration(hours: 1)),
+    avatar: const AssetImage('assets/images/Profile2.png'),
+  ),
+  Contact(
+    id: '1a2b-3c4d-5e6f-7g8h',
+    name: 'Bob',
+    lastMessage: 'The new design looks great!',
+    lastMessageDate: now.subtract(const Duration(hours: 3)),
+    avatar: const AssetImage('assets/images/Profile3.png'),
+  ),
+  Contact(
+    id: 'c1d2-e3f4-g5h6-i7j8',
+    name: 'Charlie',
+    lastMessage: 'Can we reschedule the meeting?',
+    lastMessageDate: now.subtract(const Duration(hours: 8)),
+    avatar: const AssetImage('assets/images/Profile4.png'),
+  ),
+  Contact(
+    id: 'k9l0-m1n2-o3p4-q5r6',
+    name: 'Santiago Cortés',
+    lastMessage: 'On my way!',
+    lastMessageDate: now.subtract(const Duration(days: 1)),
+    avatar: const AssetImage('assets/images/Profile5.png'),
+  ),
+  Contact(
+    id: 'a2c4-56h8-9x01-2a3d',
+    name: 'Kike',
+    lastMessage: 'True! How about your wamitas?',
+    lastMessageDate: now.subtract(const Duration(minutes: 5)),
+    avatar: const AssetImage('assets/images/Profile1.png'),
+  ),
+  Contact(
+    id: '5f9b-3c7d-1e2f-4h5j',
+    name: 'Alice',
+    lastMessage: 'See you tomorrow at 9 AM.',
+    lastMessageDate: now.subtract(const Duration(hours: 1)),
+    avatar: const AssetImage('assets/images/Profile2.png'),
+  ),
+  Contact(
+    id: '1a2b-3c4d-5e6f-7g8h',
+    name: 'Bob',
+    lastMessage: 'The new design looks great!',
+    lastMessageDate: now.subtract(const Duration(hours: 3)),
+    avatar: const AssetImage('assets/images/Profile3.png'),
+  ),
+  Contact(
+    id: 'c1d2-e3f4-g5h6-i7j8',
+    name: 'Charlie',
+    lastMessage: 'Can we reschedule the meeting?',
+    lastMessageDate: now.subtract(const Duration(hours: 8)),
+    avatar: const AssetImage('assets/images/Profile4.png'),
+  ),
+  Contact(
+    id: 'k9l0-m1n2-o3p4-q5r6',
+    name: 'Santiago Cortés',
+    lastMessage: 'On my way!',
+    lastMessageDate: now.subtract(const Duration(days: 1)),
+    avatar: const AssetImage('assets/images/Profile5.png'),
+  ),
+  Contact(
+    id: 'a2c4-56h8-9x01-2a3d',
+    name: 'Kike',
+    lastMessage: 'True! How about your wamitas?',
+    lastMessageDate: now.subtract(const Duration(minutes: 5)),
+    avatar: const AssetImage('assets/images/Profile1.png'),
+  ),
+  Contact(
+    id: '5f9b-3c7d-1e2f-4h5j',
+    name: 'Alice',
+    lastMessage: 'See you tomorrow at 9 AM.',
+    lastMessageDate: now.subtract(const Duration(hours: 1)),
+    avatar: const AssetImage('assets/images/Profile2.png'),
+  ),
+  Contact(
+    id: '1a2b-3c4d-5e6f-7g8h',
+    name: 'Bob',
+    lastMessage: 'The new design looks great!',
+    lastMessageDate: now.subtract(const Duration(hours: 3)),
+    avatar: const AssetImage('assets/images/Profile3.png'),
+  ),
+  Contact(
+    id: 'c1d2-e3f4-g5h6-i7j8',
+    name: 'Charlie',
+    lastMessage: 'Can we reschedule the meeting?',
+    lastMessageDate: now.subtract(const Duration(hours: 8)),
+    avatar: const AssetImage('assets/images/Profile4.png'),
+  ),
+  Contact(
+    id: 'k9l0-m1n2-o3p4-q5r6',
+    name: 'Santiago Cortés',
+    lastMessage: 'On my way!',
+    lastMessageDate: now.subtract(const Duration(days: 1)),
+    avatar: const AssetImage('assets/images/Profile5.png'),
+  ),
+];
+
+  @override
+  State<ChatScreen> createState() => _ChatScreenState();
+
 class _ChatScreenState extends State<ChatScreen> {
   bool _isMenuOpen = false;
 
@@ -3283,10 +3436,9 @@ class _ChatScreenState extends State<ChatScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       extendBody: true,
-
       body: Stack(
         children: [
-          // 🔹 FONDO
+          // 🔹 BACKGROUND
           Container(
             decoration: const BoxDecoration(
               image: DecorationImage(
@@ -3295,6 +3447,9 @@ class _ChatScreenState extends State<ChatScreen> {
               ),
             ),
           ),
+
+          // 🔹 TAB CONTENT (Main Screen)
+          const MainScreenContent(),
 
           // 🔹 SIDE MENU
           AnimatedPositioned(
@@ -3305,7 +3460,7 @@ class _ChatScreenState extends State<ChatScreen> {
             left: _isMenuOpen ? 0 : -260,
             width: 260,
             child: Material(
-              color: const Color.fromRGBO(37, 21, 22, 1),
+              color: const Color.fromRGBO(45, 6, 9, 1),
               elevation: 10,
               child: SafeArea(
                 child: ListView(
@@ -3314,19 +3469,8 @@ class _ChatScreenState extends State<ChatScreen> {
                     const SizedBox(height: 20),
                     ListTile(
                       leading: const Icon(Icons.settings, color: Colors.white),
-                      title: const Text(
-                        'Settings',
-                        style: TextStyle(color: Colors.white),
-                      ),
-                      onTap: () {
-                        setState(() => _isMenuOpen = false);
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (_) => const SettingsScreen(),
-                          ),
-                        );
-                      },
+                      title: const Text('Settings', style: TextStyle(color: Colors.white)),
+                      onTap: () => setState(() => _isMenuOpen = false),
                     ),
                     const Divider(color: Colors.white24),
                   ],
@@ -3336,58 +3480,24 @@ class _ChatScreenState extends State<ChatScreen> {
           ),
         ],
       ),
-
-      // 🔹 APPBAR
       appBar: AppBar(
-        title: const Text(
-          "ישוע",
-          style: TextStyle(
-            color: Color.fromRGBO(255, 239, 227, 0.9),
-            fontSize: 16,
-            fontWeight: FontWeight.w600,
-          ),
-        ),
+        title: const Text("ישוע", style: TextStyle(color: Color.fromRGBO(255, 239, 227, 0.9), fontSize: 16, fontWeight: FontWeight.w600)),
         centerTitle: true,
         leading: IconButton(
-          icon: const Icon(
-            Icons.drag_handle_rounded,
-            color: Color.fromRGBO(255, 239, 227, 0.7),
-          ),
-          onPressed: () {
-            setState(() {
-              _isMenuOpen = !_isMenuOpen;
-            });
-          },
+          icon: const Icon(Icons.drag_handle_rounded, color: Color.fromRGBO(255, 239, 227, 0.7)),
+          onPressed: () => setState(() => _isMenuOpen = !_isMenuOpen),
         ),
         actions: [
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 25),
-            child: IconButton(
-              icon: const Icon(
-                Icons.account_circle_rounded,
-                color: Color.fromRGBO(255, 239, 227, 0.5),
-              ),
-              onPressed: () {
-                // Aquí `userSelectedCity` es la ciudad que el usuario eligió
-                String userSelectedCity =
-                    ""; // ejemplo, puede venir de un TextField o picker
-
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (_) => Profilepage(city: userSelectedCity),
-                  ),
-                );
-              },
-            ),
+          IconButton(
+            icon: const Icon(Icons.account_circle_rounded, color: Color.fromRGBO(255, 239, 227, 0.5)),
+            onPressed: () {},
           ),
+          const SizedBox(width: 10),
         ],
-        backgroundColor: const Color.fromRGBO(37, 21, 22, 1),
+        backgroundColor: const Color.fromRGBO(45, 6, 9, 1),
       ),
-
-      // 🔹 CURVED NAV BAR (EL TUYO)
-      bottomNavigationBar: CurvedNavigationBar(
-        index: 2,
+            bottomNavigationBar: CurvedNavigationBar(
+        index: 1,
         buttonBackgroundColor: const Color.fromRGBO(58, 27, 45, 1),
         backgroundColor: Colors.transparent,
         color: Colors.black,
@@ -3404,18 +3514,806 @@ class _ChatScreenState extends State<ChatScreen> {
           const Icon(Icons.chat, color: Color.fromRGBO(255, 239, 227, 0.7)),
         ],
         onTap: (index) {
-          if (index == 0) {
+          if (index == 2) {
             Navigator.push(
               context,
               MaterialPageRoute(builder: (_) => const ExploreScreen()),
             );
-          } else if (index == 1) {
+          } else if (index == 2) {
             Navigator.push(
               context,
-              MaterialPageRoute(builder: (_) => const FeedScreen()),
+              MaterialPageRoute(builder: (_) => const ChatScreen()),
             );
           }
         },
+      ),
+    );
+  }
+}
+
+// --- Tab Controller Layout ---
+class MainScreenContent extends StatelessWidget {
+  const MainScreenContent({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return DefaultTabController(
+      length: 3,
+      child: NestedScrollView(
+        headerSliverBuilder: (context, innerBoxIsScrolled) {
+          return [
+            SliverAppBar(
+              automaticallyImplyLeading: false,
+              backgroundColor: const Color.fromRGBO(45, 6, 9, 1),
+              floating: true,
+              snap: true,
+              toolbarHeight: 0, // AppBar logic is handled by ChatScreen
+              bottom: const TabBar(
+                indicatorColor: Color.fromRGBO(255, 239, 227, 1),
+                labelColor: Color.fromRGBO(255, 239, 227, 1),
+                unselectedLabelColor: Colors.white54,
+                tabs: [
+                  Tab(icon: Icon(Icons.message), text: "Chats"),
+                  Tab(icon: Icon(Icons.call), text: "Calls"),
+                  Tab(icon: Icon(Icons.circle_outlined), text: "Feed"),
+                ],
+              ),
+            ),
+          ];
+        },
+        body: const TabBarView(
+          children: [
+            ChatsTab(),
+            CallsTab(),
+            NotificationsTab(),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+// --- Chats Tab Implementation ---
+class ChatsTab extends StatelessWidget {
+  const ChatsTab({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    final stories = List.generate(12, (index) => "User ${index + 1}");
+
+    return Container(
+      color: const Color.fromRGBO(45, 6, 9, 1),
+      child: Column(
+        children: [
+          SizedBox(
+            height: 110,
+            child: ListView.builder(
+              scrollDirection: Axis.horizontal,
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+              itemCount: stories.length + 1,
+              itemBuilder: (context, index) {
+                if (index == 0) return _buildAddStoryItem();
+                return _buildStoryItem(stories[index - 1], index > 6);
+              },
+            ),
+          ),
+          const Divider(color: Color.fromRGBO(255, 239, 227, 0.1), height: 1),
+          Expanded(
+            child: ListView.separated(
+              itemCount: sampleContacts.length,
+              separatorBuilder: (_, __) => const Divider(color: Colors.white10),
+              itemBuilder: (context, index) {
+                final contact = sampleContacts[index];
+                return ListTile(
+                  leading: CircleAvatar(backgroundImage: contact.avatar),
+                  title: Text(contact.name, style: const TextStyle(color: Colors.white)),
+                  subtitle: Text(contact.lastMessage, style: const TextStyle(color: Colors.white70), maxLines: 1),
+                  trailing: Text(DateFormat.jm().format(contact.lastMessageDate), style: const TextStyle(color: Colors.white54, fontSize: 12)),
+                  onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => ChatSample(contactName: contact.name, targetContact: contact))),
+                );
+              },
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildAddStoryItem() {
+    return Padding(
+      padding: const EdgeInsets.only(right: 15),
+      child: Column(children: [
+        Stack(children: [
+          const CircleAvatar(radius: 28, backgroundColor: Colors.grey, child: Icon(Icons.person, color: Colors.white)),
+          Positioned(bottom: 0, right: 0, child: Container(decoration: const BoxDecoration(color: Colors.blue, shape: BoxShape.circle), child: const Icon(Icons.add, color: Colors.white, size: 16))),
+        ]),
+        const Text("Add Story", style: TextStyle(color: Colors.white70, fontSize: 11))
+      ]),
+    );
+  }
+
+  Widget _buildStoryItem(String name, bool isSeen) {
+    return Padding(
+      padding: const EdgeInsets.only(right: 15),
+      child: Column(children: [
+        Container(
+          padding: const EdgeInsets.all(2.5),
+          decoration: BoxDecoration(shape: BoxShape.circle, border: Border.all(color: isSeen ? Colors.white24 : Colors.blue, width: 2.5)),
+          child: Opacity(opacity: isSeen ? 0.4 : 1.0, child: const CircleAvatar(radius: 26, backgroundColor: Colors.blueGrey)),
+        ),
+        Text(name, style: TextStyle(color: isSeen ? Colors.white38 : Colors.white, fontSize: 11)),
+      ]),
+    );
+  }
+}
+
+// --- Calls Tab ---
+class CallsTab extends StatelessWidget {
+  const CallsTab({super.key});
+
+  // Moved inside the class to fix the "method not defined" error
+  List<Map<String, dynamic>> _generateCallHistory() {
+    final DateFormat df = DateFormat('MMM d • h:mm a');
+
+    // Note: sampleContacts should be defined globally or passed to this widget
+    return [
+      {
+        'contact': sampleContacts[0],
+        'type': 'incoming',
+        'missed': false,
+        'video': false,
+        'time': df.format(DateTime.now().subtract(const Duration(minutes: 20))),
+      },
+      {
+        'contact': sampleContacts[1],
+        'type': 'outgoing',
+        'missed': false,
+        'video': true,
+        'time': df.format(DateTime.now().subtract(const Duration(hours: 1))),
+      },
+      {
+        'contact': sampleContacts[2],
+        'type': 'incoming',
+        'missed': true,
+        'video': false,
+        'time': df.format(DateTime.now().subtract(const Duration(hours: 4))),
+      },
+      {
+        'contact': sampleContacts[3],
+        'type': 'outgoing',
+        'missed': false,
+        'video': false,
+        'time': df.format(DateTime.now().subtract(const Duration(days: 1))),
+      },
+      {
+        'contact': sampleContacts[4],
+        'type': 'outgoing',
+        'missed': false,
+        'video': false,
+        'time': df.format(DateTime.now().subtract(const Duration(days: 1))),
+      },
+      {
+        'contact': sampleContacts[5],
+        'type': 'outgoing',
+        'missed': false,
+        'video': false,
+        'time': df.format(DateTime.now().subtract(const Duration(days: 1))),
+      },
+      {
+        'contact': sampleContacts[0],
+        'type': 'incoming',
+        'missed': false,
+        'video': false,
+        'time': df.format(DateTime.now().subtract(const Duration(minutes: 20))),
+      },
+      {
+        'contact': sampleContacts[1],
+        'type': 'outgoing',
+        'missed': false,
+        'video': true,
+        'time': df.format(DateTime.now().subtract(const Duration(hours: 1))),
+      },
+      {
+        'contact': sampleContacts[2],
+        'type': 'incoming',
+        'missed': true,
+        'video': false,
+        'time': df.format(DateTime.now().subtract(const Duration(hours: 4))),
+      },
+      {
+        'contact': sampleContacts[3],
+        'type': 'outgoing',
+        'missed': false,
+        'video': false,
+        'time': df.format(DateTime.now().subtract(const Duration(days: 1))),
+      },
+      {
+        'contact': sampleContacts[4],
+        'type': 'outgoing',
+        'missed': false,
+        'video': false,
+        'time': df.format(DateTime.now().subtract(const Duration(days: 1))),
+      },
+      {
+        'contact': sampleContacts[5],
+        'type': 'outgoing',
+        'missed': false,
+        'video': false,
+        'time': df.format(DateTime.now().subtract(const Duration(days: 1))),
+      },
+      {
+        'contact': sampleContacts[0],
+        'type': 'incoming',
+        'missed': false,
+        'video': false,
+        'time': df.format(DateTime.now().subtract(const Duration(minutes: 20))),
+      },
+      {
+        'contact': sampleContacts[1],
+        'type': 'outgoing',
+        'missed': false,
+        'video': true,
+        'time': df.format(DateTime.now().subtract(const Duration(hours: 1))),
+      },
+      {
+        'contact': sampleContacts[2],
+        'type': 'incoming',
+        'missed': true,
+        'video': false,
+        'time': df.format(DateTime.now().subtract(const Duration(hours: 4))),
+      },
+      {
+        'contact': sampleContacts[3],
+        'type': 'outgoing',
+        'missed': false,
+        'video': false,
+        'time': df.format(DateTime.now().subtract(const Duration(days: 1))),
+      },
+      {
+        'contact': sampleContacts[4],
+        'type': 'outgoing',
+        'missed': false,
+        'video': false,
+        'time': df.format(DateTime.now().subtract(const Duration(days: 1))),
+      },
+      {
+        'contact': sampleContacts[5],
+        'type': 'outgoing',
+        'missed': false,
+        'video': false,
+        'time': df.format(DateTime.now().subtract(const Duration(days: 1))),
+      },
+      {
+        'contact': sampleContacts[0],
+        'type': 'incoming',
+        'missed': false,
+        'video': false,
+        'time': df.format(DateTime.now().subtract(const Duration(minutes: 20))),
+      },
+      {
+        'contact': sampleContacts[1],
+        'type': 'outgoing',
+        'missed': false,
+        'video': true,
+        'time': df.format(DateTime.now().subtract(const Duration(hours: 1))),
+      },
+      {
+        'contact': sampleContacts[2],
+        'type': 'incoming',
+        'missed': true,
+        'video': false,
+        'time': df.format(DateTime.now().subtract(const Duration(hours: 4))),
+      },
+      {
+        'contact': sampleContacts[3],
+        'type': 'outgoing',
+        'missed': false,
+        'video': false,
+        'time': df.format(DateTime.now().subtract(const Duration(days: 1))),
+      },
+      {
+        'contact': sampleContacts[4],
+        'type': 'outgoing',
+        'missed': false,
+        'video': false,
+        'time': df.format(DateTime.now().subtract(const Duration(days: 1))),
+      },
+      {
+        'contact': sampleContacts[5],
+        'type': 'outgoing',
+        'missed': false,
+        'video': false,
+        'time': df.format(DateTime.now().subtract(const Duration(days: 1))),
+      },
+      {
+        'contact': sampleContacts[0],
+        'type': 'incoming',
+        'missed': false,
+        'video': false,
+        'time': df.format(DateTime.now().subtract(const Duration(minutes: 20))),
+      },
+      {
+        'contact': sampleContacts[1],
+        'type': 'outgoing',
+        'missed': false,
+        'video': true,
+        'time': df.format(DateTime.now().subtract(const Duration(hours: 1))),
+      },
+      {
+        'contact': sampleContacts[2],
+        'type': 'incoming',
+        'missed': true,
+        'video': false,
+        'time': df.format(DateTime.now().subtract(const Duration(hours: 4))),
+      },
+      {
+        'contact': sampleContacts[3],
+        'type': 'outgoing',
+        'missed': false,
+        'video': false,
+        'time': df.format(DateTime.now().subtract(const Duration(days: 1))),
+      },
+      {
+        'contact': sampleContacts[4],
+        'type': 'outgoing',
+        'missed': false,
+        'video': false,
+        'time': df.format(DateTime.now().subtract(const Duration(days: 1))),
+      },
+      {
+        'contact': sampleContacts[5],
+        'type': 'outgoing',
+        'missed': false,
+        'video': false,
+        'time': df.format(DateTime.now().subtract(const Duration(days: 1))),
+      },
+    ];
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      color: const Color.fromRGBO(45, 6, 9, 1),
+      child: ListView(
+        children: [
+          const Padding(
+            padding: EdgeInsets.only(left: 16, top: 12, bottom: 5),
+            child: Text(
+              "Recent",
+              style: TextStyle(
+                color: Color.fromRGBO(255, 239, 227, 0.8),
+                fontWeight: FontWeight.bold,
+                fontSize: 15,
+              ),
+            ),
+          ),
+
+          ..._generateCallHistory().map((call) {
+            return ListTile(
+              leading: CircleAvatar(
+                radius: 25,
+                backgroundImage: call['contact'].avatar,
+              ),
+              title: Text(
+                call['contact'].name,
+                style: const TextStyle(color: Colors.white, fontSize: 16),
+              ),
+              subtitle: Row(
+                children: [
+                  Icon(
+                    call['type'] == 'incoming'
+                        ? Icons.call_received
+                        : Icons.call_made,
+                    size: 16,
+                    color: call['missed']
+                        ? Colors.redAccent
+                        : Colors.green,
+                  ),
+                  const SizedBox(width: 6),
+                  Text(
+                    "${call['time']}",
+                    style: const TextStyle(
+                      color: Colors.white, // Updated to white
+                    ),
+                  )
+                ],
+              ),
+              trailing: Icon(
+                call['video'] ? Icons.videocam : Icons.phone,
+                color: const Color.fromRGBO(255, 239, 227, 1),
+              ),
+            );
+          })
+        ],
+      ),
+    );
+  }
+}
+
+
+class NotificationsTab extends StatefulWidget {
+  const NotificationsTab({super.key});
+
+  @override
+  State<NotificationsTab> createState() => _NotificationsTabState();
+}
+
+class _NotificationsTabState extends State<NotificationsTab> {
+  late List<FeedItem> feedItems;
+
+  @override
+  void initState() {
+    super.initState();
+    // Mix sample data: Notifications, Threads, and Photos
+    // Note: sampleContacts is assumed to be defined in your main file
+    feedItems = [
+      FeedItem(
+        id: 'f1',
+        contact: sampleContacts[0],
+        type: FeedType.notification,
+        content: "Mentioned you in a comment",
+        timestamp: DateTime.now().subtract(const Duration(minutes: 5)),
+      ),
+      FeedItem(
+        id: 'f2',
+        contact: sampleContacts[1],
+        type: FeedType.thread,
+        content: "Does anyone know if the coffee shop is open? I'm starving! ☕️",
+        timestamp: DateTime.now().subtract(const Duration(hours: 1)),
+      ),
+      FeedItem(
+        id: 'f3',
+        contact: sampleContacts[2],
+        type: FeedType.photo,
+        imageUrl: 'assets/images/C2.jpg',
+        content: "Beautiful sunset today! #nature",
+        timestamp: DateTime.now().subtract(const Duration(hours: 2)),
+      ),
+      FeedItem(
+        id: 'f4',
+        contact: sampleContacts[3],
+        type: FeedType.notification,
+        content: "Sent you a friend request",
+        timestamp: DateTime.now().subtract(const Duration(days: 1)),
+      ),
+    ];
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      color: const Color.fromRGBO(58, 27, 22, 0.3),
+      child: Column(
+        children: [
+          const SizedBox(height: 12),
+          Expanded(
+            child: Padding(
+              padding: const EdgeInsets.all(12.0),
+              child: feedItems.isEmpty
+                  ? const Center(child: Text("All caught up!", style: TextStyle(color: Colors.white54)))
+                  : Stack(
+                      children: feedItems.asMap().entries.map((entry) {
+                        int index = entry.key;
+                        FeedItem item = entry.value;
+                        bool isTop = index == feedItems.length - 1;
+                        return Positioned.fill(
+                          child: Align(
+                            alignment: Alignment.center,
+                            child: isTop
+                                ? Dismissible(
+                                    key: Key(item.id),
+                                    onDismissed: (_) => setState(() => feedItems.removeAt(index)),
+                                    // Swipe Right = Read
+                                    secondaryBackground: _buildSwipeBanner(
+                                      label: "UNREAD",
+                                      color: Color.fromRGBO(255, 239, 227, 0.7),
+                                      alignment: Alignment.centerRight,
+                                    ),
+                                    // Swipe Left = Unread
+                                    background: _buildSwipeBanner(
+                                      label: "READ",
+                                      color: Colors.blue,
+                                      alignment: Alignment.centerLeft,
+                                    ),
+                                    child: _buildFeedCard(item),
+                                  )
+                                : Transform.scale(
+                                    scale: 0.95 + (index * 0.01),
+                                    child: _buildFeedCard(item),
+                                  ),
+                          ),
+                        );
+                      }).toList(),
+                    ),
+            ),
+          ),
+          const SizedBox(height: 10),
+        ],
+      ),
+    );
+  }
+  
+  // Helper to build the large "Read/Unread" banners
+Widget _buildSwipeBanner({
+  required String label,
+  required Color color, // This parameter can now be overridden by the logic below
+  required Alignment alignment,
+}) {
+  // Define your custom colors
+  const Color readColor = Color.fromRGBO(255, 239, 227, 0.7);
+  const Color unreadColor = Colors.blue;
+
+  // Determine which theme to use based on alignment
+  // centerRight = Swiping towards the right (Read)
+  // centerLeft = Swiping towards the left (Unread)
+  bool isRead = alignment == Alignment.centerRight;
+  Color activeColor = isRead ? readColor : unreadColor;
+
+  return Container(
+    alignment: alignment,
+    padding: const EdgeInsets.symmetric(horizontal: 20),
+    decoration: BoxDecoration(
+      borderRadius: BorderRadius.circular(30),
+      gradient: LinearGradient(
+        colors: isRead
+            ? [Colors.transparent, readColor] // Gradient for Read
+            : [unreadColor, Colors.transparent], // Gradient for Unread
+        begin: Alignment.centerLeft,
+        end: Alignment.centerRight,
+      ),
+    ),
+    child: FittedBox(
+      child: Text(
+        label,
+        style: TextStyle(
+          color: activeColor, // Set the text color to match the theme
+          fontWeight: FontWeight.w900,
+          fontSize: 48,
+          letterSpacing: 3,
+          shadows: const [
+            Shadow(
+              blurRadius: 5.0,
+              color: Colors.black,
+              offset: Offset(1.0, 1.0),
+            ),
+          ],
+        ),
+      ),
+    ),
+  );
+}
+
+  Widget _buildFeedCard(FeedItem item) {
+    return Container(
+      width: double.infinity,
+      decoration: BoxDecoration(
+        color: const Color.fromRGBO(45, 6, 9, 1),
+        borderRadius: BorderRadius.circular(30),
+        border: Border.all(color: Colors.white10),
+        boxShadow: const [BoxShadow(color: Colors.black54, blurRadius: 15)],
+      ),
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(30),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            ListTile(
+              leading: CircleAvatar(backgroundImage: item.contact.avatar),
+              title: Text(item.contact.name, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+              subtitle: Text(DateFormat('jm').format(item.timestamp), style: const TextStyle(color: Colors.white38)),
+              trailing: const Icon(Icons.more_horiz, color: Colors.white54),
+            ),
+            if (item.type == FeedType.photo && item.imageUrl != null)
+              Expanded(
+                child: Image.asset(
+                  item.imageUrl!,
+                  width: double.infinity,
+                  fit: BoxFit.cover,
+                ),
+              ),
+            Expanded(
+              child: SingleChildScrollView(
+                padding: const EdgeInsets.all(16.0),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    if (item.type == FeedType.thread)
+                      const Padding(
+                        padding: EdgeInsets.only(bottom: 8.0),
+                        child: Text("🧵 NEW THREAD", style: TextStyle(color: Colors.blueAccent, fontWeight: FontWeight.bold, fontSize: 10)),
+                      ),
+                    Text(
+                      item.content ?? "",
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontSize: item.type == FeedType.thread ? 22 : 16,
+                        fontStyle: item.type == FeedType.notification ? FontStyle.italic : FontStyle.normal,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 10),
+              child: Row(
+                children: [
+                  IconButton(onPressed: () {}, icon: const Icon(Icons.favorite_border, color: Colors.redAccent)),
+                  IconButton(onPressed: () {}, icon: const Icon(Icons.chat_bubble_outline, color: Colors.white54)),
+                  const Spacer(),
+                  const Icon(Icons.ios_share, color: Colors.white54, size: 20),
+                  const SizedBox(width: 10),
+                ],
+              ),
+            )
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+// --- Chat Screen ---
+class ChatSample extends StatefulWidget {
+  final String contactName;
+  final Contact targetContact;
+
+  const ChatSample(
+      {super.key, required this.contactName, required this.targetContact});
+
+  @override
+  State<ChatSample> createState() => ChatSampleState();
+}
+
+class ChatSampleState extends State<ChatSample> {
+  late List<ChatMessage> _messages;
+  
+  final ChatAuthor currentUser = const ChatAuthor(
+    avatar: AssetImage('assets/images/Profile2.png'),
+    id: '8ob3-b720-g9s6-25s8',
+    name: 'Santi',
+  );
+
+  @override
+  void initState() {
+    super.initState();
+    _messages = _generateMessagesForContact(widget.targetContact, currentUser);
+  }
+
+  List<ChatMessage> _generateMessagesForContact(Contact contact, ChatAuthor user) {
+    final List<String> convo = [
+      "Hey ${contact.name}! What's up?",
+      "Hello! Not much, just working on some stuff.",
+      "Cool. How is the project going?",
+      "It's progressing well, challenging but fun.",
+      "I finally figured out how to use the bottom nav bar in Flutter.",
+      "Oh yeah? Nice job, I saw the code it looks clean.",
+      "Thanks! Are we still on for the meetup tomorrow?",
+      "Yeah, 7 PM at the usual spot works for me.",
+      "Sounds perfect. I'm looking forward to it.",
+      "Me too, it's been a while.",
+      "Definitely. How is Autumn the cat?",
+      "She's great, currently sleeping on my keyboard.",
+      "Typical cat behavior.",
+      "Haha, exactly.",
+      "See you tomorrow then!",
+      "Later!",
+      contact.lastMessage,
+    ];
+
+    List<ChatMessage> generated = [];
+    DateTime time = now.subtract(Duration(minutes: 60));
+
+    for (int i = 0; i < convo.length; i++) {
+      bool isUserMessage = i % 2 == 0;
+      generated.add(
+        ChatMessage(
+          text: convo[i],
+          time: time.add(Duration(minutes: i)),
+          author: isUserMessage ? user : ChatAuthor(
+            avatar: contact.avatar,
+            id: contact.id,
+            name: contact.name,
+          ),
+        ),
+      );
+    }
+    return generated;
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: const Color.fromRGBO(58, 27, 22, 0.3),
+      appBar: AppBar(
+        title: Text(widget.contactName),
+        foregroundColor: const Color.fromRGBO(255, 239, 227, 1), 
+        titleTextStyle: const TextStyle(color: Color.fromRGBO(255, 239, 227, 1)),
+        backgroundColor: const Color.fromRGBO(45, 6, 9, 1),
+      ),
+      body: Stack(
+        children: [
+          Container(
+            decoration: const BoxDecoration(
+              color: Color.fromRGBO(58, 27, 22, 0.3),
+              image: DecorationImage(
+                image: AssetImage('assets/images/C2.jpg'),
+                repeat: ImageRepeat.repeat,
+                opacity: 0.3,
+              ),
+            ),
+          ),
+
+          Padding(
+            padding: const EdgeInsets.all(10.0),
+            child: SfChat(
+              incomingMessageSettings: const ChatMessageSettings(
+                backgroundColor: Color.fromRGBO(0, 0, 0, 1),
+                textStyle: TextStyle(color: Color.fromRGBO(255, 239, 227, 1)),
+                shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.all(Radius.circular(12))),
+                headerTextStyle: TextStyle(
+                    color: Color.fromRGBO(255, 239, 227, 0.7),
+                    fontWeight: FontWeight.bold),
+              ),
+              outgoingMessageSettings: const ChatMessageSettings(
+                backgroundColor: Color.fromRGBO(45, 6, 9, 1),
+                textStyle: TextStyle(color: Color.fromRGBO(255, 239, 227, 1)),
+                shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.all(Radius.circular(12))),
+                headerTextStyle: TextStyle(
+                    color: Color.fromRGBO(255, 239, 227, 0.7),
+                    fontWeight: FontWeight.bold),
+              ),
+              messages: _messages,
+              outgoingUser: currentUser.id,
+              composer: const ChatComposer(
+                textStyle: TextStyle(color: Color.fromRGBO(255, 239, 227, 1)),
+                decoration: InputDecoration(
+                  focusedBorder: OutlineInputBorder(borderSide: BorderSide(color: Color.fromRGBO(45, 6, 9, 1)),
+                  borderRadius: BorderRadius.all(Radius.circular(100))),
+                  hintText: 'Start Typing...',
+                  hintStyle: TextStyle(color: Color.fromRGBO(255, 239, 227, 0.7)),
+                  filled: true,
+                  fillColor: Color.fromRGBO(45, 6, 9, 1),
+                  focusColor: Color.fromRGBO(45, 6, 9, 1),
+                ),
+              ),
+              actionButton: ChatActionButton(
+                backgroundColor: Color.fromRGBO(255, 239, 227, 1),
+                foregroundColor: Color.fromRGBO(45, 6, 9, 1),
+                onPressed: (String newMessage) {
+                  setState(() {
+                    _messages.add(ChatMessage(
+                      text: newMessage,
+                      time: DateTime.now(),
+                      author: currentUser,
+                    ));
+                  });
+                },
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+// --- Utils ---
+class CurvedNavigationBarPlaceholder extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      height: 60,
+      color: Colors.black,
+      child: const Row(
+        mainAxisAlignment: MainAxisAlignment.spaceAround,
+        children: [
+          Icon(Icons.public_rounded, color: Colors.white70),
+          Icon(Icons.home, color: Colors.white),
+          Icon(Icons.chat, color: Colors.white70),
+        ],
       ),
     );
   }

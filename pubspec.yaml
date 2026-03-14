@@ -39,6 +39,7 @@ dependencies:
   emoji_picker_flutter: ^4.3.0
   showcaseview: 2.0.3
   shared_preferences: ^2.1.1 # Agrega esta línea aquí
+  syncfusion_flutter_chat: ^32.1.24
 
 dev_dependencies:
   flutter_test:
