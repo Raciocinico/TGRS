@@ -3273,7 +3273,11 @@ class ChatScreen extends StatefulWidget {
 
   @override
   State<ChatScreen> createState() => _ChatScreenState();
+  
 }
+
+
+  bool _isMenuOpen = false; // menú lateral (hamburguesa)
 
 // --- Data Models ---
 class Contact {
@@ -3608,7 +3612,7 @@ class ChatsTab extends StatelessWidget {
           decoration: BoxDecoration(
               shape: BoxShape.circle,
               border: Border.all(
-                  color: isSeen ? const Color.fromARGB(59, 11, 248, 31) : Colors.blue, width: 2.5)),
+                  color: isSeen ? Colors.white24 : Colors.blue, width: 2.5)),
           child: Opacity(
               opacity: isSeen ? 0.4 : 1.0,
               child: const CircleAvatar(
