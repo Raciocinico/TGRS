@@ -3261,6 +3261,7 @@ class _FeedScreenState extends State<FeedScreen> {
 }
 
 class ChatScreen extends StatefulWidget {
+  
   const ChatScreen({
     super.key,
     this.city = "Desconocido",
@@ -3355,7 +3356,10 @@ final List<Contact> sampleContacts = [
 State<ChatScreen> createState() => _ChatScreenState();
 
 class _ChatScreenState extends State<ChatScreen> {
-  bool _isMenuOpen = false;
+ void _restartTutorial() {
+    // lógica real aquí
+    debugPrint('Tutorial restarted');
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -3604,7 +3608,7 @@ class ChatsTab extends StatelessWidget {
           decoration: BoxDecoration(
               shape: BoxShape.circle,
               border: Border.all(
-                  color: isSeen ? Colors.white24 : Colors.blue, width: 2.5)),
+                  color: isSeen ? const Color.fromARGB(59, 11, 248, 31) : Colors.blue, width: 2.5)),
           child: Opacity(
               opacity: isSeen ? 0.4 : 1.0,
               child: const CircleAvatar(
