@@ -3285,7 +3285,7 @@ class Contact {
   final String name;
   final String lastMessage;
   final DateTime lastMessageDate;
-  final ImageProvider avatar;
+  final ImageProvider avatar; 
 
   const Contact({
     required this.id,
