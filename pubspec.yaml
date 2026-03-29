@@ -39,7 +39,6 @@ dependencies:
   showcaseview: 2.0.3
   shared_preferences: ^2.1.1 # Agrega esta línea aquí
   syncfusion_flutter_chat: ^27.1.481
-  intl: ^0.19.0
 
 dev_dependencies:
   flutter_test:
