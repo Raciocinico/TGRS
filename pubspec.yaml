@@ -13,6 +13,7 @@ dependencies:
     sdk: flutter
   geolocator: ^10.1.0   # Para obtener la ubicación
   geocoding: ^2.1.0     # Para convertir coordenadas en ciudad
+  intl: ^0.19.0 
   flutter_typeahead: ^4.3.7
   flutter_secure_storage: ^9.0.0
   toggle_switch: ^2.3.0
@@ -38,7 +39,11 @@ dependencies:
   emoji_picker_flutter: ^4.3.0
   showcaseview: 2.0.3
   shared_preferences: ^2.1.1 # Agrega esta línea aquí
+<<<<<<< HEAD
   syncfusion_flutter_chat: ^27.1.481
+=======
+  syncfusion_flutter_chat: ^32.1.24
+>>>>>>> 02bc4a742773c94a2f3a4cda49fb19b918a1423c
 
 dev_dependencies:
   flutter_test:
@@ -60,4 +65,3 @@ flutter:
   assets:
     - assets/images/
     - assets/cities.json
-
