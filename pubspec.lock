@@ -724,10 +724,10 @@ packages:
     dependency: "direct main"
     description:
       name: intl
-      sha256: "3bc132a9dbce73a7e4a21a17d06e1878839ffbf975568bc875c60537824b0c4d"
+      sha256: d6f56758b7d3014a48af9701c085700aac781a92a87a62b1333b46d8879661cf
       url: "https://pub.dev"
     source: hosted
-    version: "0.18.1"
+    version: "0.19.0"
   js:
     dependency: transitive
     description:
@@ -1073,18 +1073,18 @@ packages:
     dependency: "direct main"
     description:
       name: syncfusion_flutter_chat
-      sha256: a99e776b57df1a4fbaca50fae6fa69149555ece4ee5d2294277fbfcfa48e42b5
+      sha256: "5320fd30a70255891112258b9d8d9495e1115ebb96fda3524b91d9268cc4327f"
       url: "https://pub.dev"
     source: hosted
-    version: "32.1.24"
+    version: "32.2.9"
   syncfusion_flutter_core:
     dependency: transitive
     description:
       name: syncfusion_flutter_core
-      sha256: "2c6ba5e21f944e9c18db7be9fb40a9e09747b6f9942c9c0e77eb573c15e68338"
+      sha256: "7699e129fc48dfdbb6ad7f8396eaddf5b8f06c649c5bfabdeee5a73dbaca845c"
       url: "https://pub.dev"
     source: hosted
-    version: "32.1.24"
+    version: "32.2.9"
   term_glyph:
     dependency: transitive
     description:
