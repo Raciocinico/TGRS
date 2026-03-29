@@ -278,14 +278,14 @@ class _HomeScreenState extends State<HomeScreen> {
             left: 0,
             right: 0,
             child: Center(
-              child: Container(
+              child: SizedBox(
                 width: 280, // Ancho fijo
                 child: ToggleSwitch(
                   minWidth: 140,
                   cornerRadius: 20.0,
                   activeBgColors: [
-                    [const Color.fromARGB(255, 0, 0, 0)!],
-                    [const Color.fromARGB(255, 0, 0, 0)!]
+                    [const Color.fromARGB(255, 0, 0, 0)],
+                    [const Color.fromARGB(255, 0, 0, 0)]
                   ],
                   activeFgColor: Colors.white,
                   inactiveBgColor: Color.fromRGBO(54, 15, 19, 1),
@@ -1049,8 +1049,8 @@ class _HomeContentState extends State<HomeContent> {
                     minWidth: 140,
                     cornerRadius: 20.0,
                     activeBgColors: [
-                      [const Color.fromARGB(255, 0, 0, 0)!],
-                      [const Color.fromARGB(255, 0, 0, 0)!]
+                      [const Color.fromARGB(255, 0, 0, 0)],
+                      [const Color.fromARGB(255, 0, 0, 0)]
                     ],
                     activeFgColor: Colors.white,
                     inactiveBgColor: Color.fromRGBO(54, 15, 19, 1),
@@ -3704,8 +3704,9 @@ class _NotificationsTabState extends State<NotificationsTab> {
   }
 
   Widget _buildDismissibleCard(int index, FeedItem item) {
-    if (index != feedItems.length - 1)
+    if (index != feedItems.length - 1) {
       return Transform.scale(scale: 0.95, child: _buildFeedCard(item));
+    }
     return Dismissible(
       key: Key(item.id),
       onDismissed: (_) => setState(() => feedItems.removeAt(index)),
