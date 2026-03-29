@@ -4076,8 +4076,6 @@ class _NotificationsTabState extends State<NotificationsTab> {
       ),
     );
   }
-
-<<<<<<< HEAD
   Widget _buildDismissibleCard(int index, FeedItem item) {
     if (index != feedItems.length - 1) {
       return Transform.scale(scale: 0.95, child: _buildFeedCard(item));
@@ -4094,7 +4092,6 @@ class _NotificationsTabState extends State<NotificationsTab> {
       child: _buildFeedCard(item),
     );
   }
-=======
   // Helper to build the large "Read/Unread" banners
   Widget _buildSwipeBanner({
     required String label,
@@ -4111,8 +4108,6 @@ class _NotificationsTabState extends State<NotificationsTab> {
     // centerLeft = Swiping towards the left (Unread)
     bool isRead = alignment == Alignment.centerRight;
     Color activeColor = isRead ? readColor : unreadColor;
->>>>>>> main
-
     return Container(
       alignment: alignment,
       padding: const EdgeInsets.symmetric(horizontal: 20),
