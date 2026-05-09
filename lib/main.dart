@@ -19,7 +19,9 @@ import 'package:curved_navigation_bar/curved_navigation_bar.dart';
 import 'package:showcaseview/showcaseview.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:intl/intl.dart';
+import 'package:firebase_storage/firebase_storage.dart';
 import 'package:syncfusion_flutter_chat/chat.dart';
+import 'package:video_player/video_player.dart';
 
 Future<UserCredential?> signInWithGoogle() async {
   final GoogleSignInAccount? googleUser = await GoogleSignIn().signIn();
@@ -650,6 +652,7 @@ class _RegistrationScreenState extends State<RegistrationScreen> {
                                       .collection('users')
                                       .doc(uid)
                                       .set({
+                                    'uid': uid,
                                     'name': name,
                                     'username': username,
                                     'email': email,
@@ -857,6 +860,39 @@ class _HomeContentState extends State<HomeContent> {
     }
   }
 
+  Future<void> _forgotPassword() async {
+    if (_emailController.text.trim().isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text("Enter your email first")),
+      );
+      return;
+    }
+
+    try {
+      await FirebaseAuth.instance.sendPasswordResetEmail(
+        email: _emailController.text.trim(),
+      );
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text("Password reset email sent"),
+        ),
+      );
+    } on FirebaseAuthException catch (e) {
+      String message = "Error";
+
+      if (e.code == 'user-not-found') {
+        message = "No user with this email";
+      } else if (e.code == 'invalid-email') {
+        message = "Invalid email";
+      }
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(message)),
+      );
+    }
+  }
+
   @override
   void dispose() {
     _emailController.dispose();
@@ -948,6 +984,17 @@ class _HomeContentState extends State<HomeContent> {
                           ),
                         ),
                         style: const TextStyle(color: Colors.white),
+                      ),
+                    ),
+                    TextButton(
+                      onPressed: _forgotPassword,
+                      style: ButtonStyle(
+                        overlayColor:
+                            MaterialStateProperty.all(Colors.transparent),
+                      ),
+                      child: const Text(
+                        "Forgot Password?",
+                        style: TextStyle(color: Colors.white70),
                       ),
                     ),
                     const SizedBox(height: 20),
@@ -1868,6 +1915,7 @@ class _PhotoUploadScreenState extends State<PhotoUploadScreen> {
 */
 
 class Thread {
+  final String id;
   final String username;
   final String content;
   final DateTime timestamp;
@@ -1875,6 +1923,7 @@ class Thread {
   List<String> comments = [];
 
   Thread({
+    required this.id,
     required this.username,
     required this.content,
     required this.timestamp,
@@ -1897,11 +1946,15 @@ class Profilepage extends StatefulWidget {
 class _ProfilePageState extends State<Profilepage> {
   File? _profileImage;
   File? _coverImage;
+  String? _coverImageUrl;
+  String? _profileImageUrl;
+  String? threadId;
   final ImagePicker _picker = ImagePicker();
   final List<File> _videos = [];
   List<File> _photos = [];
-  int selectedTab = 0; // 0=Threads, 1=Photos, 2=Videos
+  List<VideoPlayerController> _videoControllers = [];
   List<Thread> threads = [];
+  int selectedTab = 0; // 0=Threads, 1=Photos, 2=Videos
   TextEditingController threadController = TextEditingController();
   Timer? _timer;
 
@@ -1918,6 +1971,7 @@ class _ProfilePageState extends State<Profilepage> {
   bool _showFab = true; // tu botón START
   bool _isMenuOpen = false; // menú lateral (hamburguesa)
   bool _isListOpen = false; // ListView desplegable
+  bool _isUploading = false;
 
   // Formato de tiempo relativo
   String timeAgo(DateTime date) {
@@ -1930,6 +1984,30 @@ class _ProfilePageState extends State<Profilepage> {
 
   @override
   void initState() {
+    super.initState();
+    _loadUserData();
+    _loadProfileImage();
+  }
+
+  Future<void> _loadUserData() async {
+    final user = FirebaseAuth.instance.currentUser;
+    if (user == null) return;
+
+    final docRef = FirebaseFirestore.instance.collection('users').doc(user.uid);
+    final doc = await docRef.get();
+
+    if (doc.exists && doc.data() != null) {
+      setState(() {
+        // FIX: Change 'coverImage' to 'coverImageUrl'
+        _coverImageUrl = doc.data()!.containsKey('coverImageUrl')
+            ? doc['coverImageUrl']
+            : null;
+      });
+
+      // Debug print to confirm what we retrieved
+      print("Retrieved URL: $_coverImageUrl");
+    }
+
     super.initState();
     _timer = Timer.periodic(const Duration(minutes: 1), (_) {
       setState(() {});
@@ -1981,17 +2059,138 @@ class _ProfilePageState extends State<Profilepage> {
   }
 
   Future<void> _pickProfileImage() async {
-    final pickedFile = await _picker.pickImage(source: ImageSource.gallery);
-    if (pickedFile != null) {
-      setState(() => _profileImage = File(pickedFile.path));
+    final picker = ImagePicker();
+    final pickedFile = await picker.pickImage(source: ImageSource.gallery);
+
+    if (pickedFile == null) return;
+
+    File imageFile = File(pickedFile.path);
+
+    setState(() {
+      _profileImage = imageFile;
+      _isUploading = true;
+    });
+
+    try {
+      String userId = FirebaseAuth.instance.currentUser!.uid;
+
+      // 🔼 Subir a Firebase Storage
+      final storageRef = FirebaseStorage.instance
+          .ref()
+          .child('profile_images')
+          .child('$userId.jpg');
+
+      final uploadTask = await storageRef.putFile(imageFile);
+
+      final downloadUrl = await uploadTask.ref.getDownloadURL();
+
+      // 💾 Guardar en Firestore
+      await FirebaseFirestore.instance.collection('users').doc(userId).update({
+        'profileImage': downloadUrl,
+      });
+
+      setState(() {
+        _profileImageUrl = downloadUrl;
+      });
+    } catch (e) {
+      print("Error subiendo imagen: $e");
+    } finally {
+      setState(() {
+        _isUploading = false;
+      });
     }
   }
 
   Future<void> _pickCoverImage() async {
-    final pickedFile = await _picker.pickImage(source: ImageSource.gallery);
-    if (pickedFile != null) {
-      setState(() => _coverImage = File(pickedFile.path));
+    final picked = await ImagePicker().pickImage(source: ImageSource.gallery);
+
+    if (picked != null) {
+      File imageFile = File(picked.path);
+
+      setState(() {
+        _coverImage = imageFile; // preview inmediata
+      });
+
+      // 🔥 subir a Firebase
+      String? url = await uploadCoverImage(imageFile);
+
+      if (url != null) {
+        setState(() {
+          _coverImageUrl = url;
+        });
+
+        await saveCoverImageToFirestore(url);
+      }
     }
+  }
+
+  Future<void> _loadProfileImage() async {
+    String userId = FirebaseAuth.instance.currentUser!.uid;
+
+    final doc =
+        await FirebaseFirestore.instance.collection('users').doc(userId).get();
+
+    if (doc.exists && doc.data()!['profileImage'] != null) {
+      setState(() {
+        _profileImageUrl = doc['profileImage'];
+      });
+    }
+  }
+
+  Future<String?> uploadCoverImage(File image) async {
+    try {
+      print("Iniciando upload...");
+
+      final ref = FirebaseStorage.instance.ref().child('cover_images/test.jpg');
+
+      UploadTask uploadTask = ref.putFile(image);
+
+      TaskSnapshot snapshot = await uploadTask;
+
+      print("Estado upload: ${snapshot.state}");
+
+      String url = await snapshot.ref.getDownloadURL();
+
+      print("URL obtenida: $url");
+
+      return url;
+    } catch (e) {
+      print("ERROR REAL: $e");
+      return null;
+    }
+  }
+
+  Future<void> saveCoverImageToFirestore(String url) async {
+    final user = FirebaseAuth.instance.currentUser;
+
+    // Make sure you have the UID before proceeding
+    if (user == null) return;
+
+    await FirebaseFirestore.instance
+        .collection('users')
+        .doc(user.uid) // Use user.uid here
+        .set({
+      'coverImageUrl': url, // Use the 'url' parameter passed to the function
+    }, SetOptions(merge: true));
+  }
+
+  Future<String> uploadImage(File imageFile, String userId) async {
+    final storageRef = FirebaseStorage.instance
+        .ref()
+        .child('profile_images')
+        .child('$userId.jpg');
+
+    final uploadTask = await storageRef.putFile(imageFile);
+
+    final downloadUrl = await uploadTask.ref.getDownloadURL();
+
+    return downloadUrl;
+  }
+
+  Future<void> saveImageUrl(String userId, String imageUrl) async {
+    await FirebaseFirestore.instance.collection('users').doc(userId).update({
+      'profileImage': imageUrl,
+    });
   }
 
   Future<void> _pickPhoto() async {
@@ -2003,24 +2202,117 @@ class _ProfilePageState extends State<Profilepage> {
 
   Future<void> _pickVideo() async {
     final pickedFile = await _picker.pickVideo(source: ImageSource.gallery);
-    if (pickedFile != null) {
-      setState(() => _videos.add(File(pickedFile.path)));
+
+    if (pickedFile == null) return;
+
+    File videoFile = File(pickedFile.path);
+
+    setState(() => _isUploading = true);
+
+    try {
+      String? url = await uploadVideo(videoFile);
+
+      if (url != null) {
+        final controller = VideoPlayerController.networkUrl(Uri.parse(url));
+
+        await controller.initialize();
+        controller.setLooping(true);
+
+        setState(() {
+          _videoControllers.add(controller);
+        });
+      }
+    } catch (e) {
+      print("ERROR VIDEO: $e");
+    } finally {
+      setState(() => _isUploading = false);
     }
   }
 
-  void _addThread() {
-    if (threadController.text.isNotEmpty) {
-      setState(() {
-        threads.insert(
-          0,
-          Thread(
-            username: "Edward Kenway",
-            content: threadController.text,
-            timestamp: DateTime.now(),
-          ),
-        );
-        threadController.clear();
+  Future<String?> uploadVideo(File videoFile) async {
+    try {
+      String userId = FirebaseAuth.instance.currentUser!.uid;
+
+      final fileName = DateTime.now().millisecondsSinceEpoch.toString();
+
+      final ref = FirebaseStorage.instance
+          .ref()
+          .child('videos')
+          .child(userId)
+          .child('$fileName.mp4');
+
+      UploadTask uploadTask = ref.putFile(videoFile);
+
+      TaskSnapshot snapshot = await uploadTask;
+
+      String downloadUrl = await snapshot.ref.getDownloadURL();
+
+      return downloadUrl;
+    } catch (e) {
+      print("ERROR subiendo video: $e");
+      return null;
+    }
+  }
+
+  Future<void> saveVideoToFirestore(String url) async {
+    String userId = FirebaseAuth.instance.currentUser!.uid;
+
+    await FirebaseFirestore.instance
+        .collection('users')
+        .doc(userId)
+        .collection('videos')
+        .add({
+      'videoUrl': url,
+      'createdAt': FieldValue.serverTimestamp(),
+    });
+  }
+
+  Future<void> _addThread() async {
+    String text = threadController.text.trim();
+    if (text.isEmpty) return;
+
+    String id = await _createThread(text);
+
+    // 🔥 VALIDACIÓN CLAVE
+    if (id.isEmpty) {
+      print("❌ ERROR: no se creó el thread correctamente");
+      return;
+    }
+
+    print("✅ USANDO THREAD ID: $id");
+
+    setState(() {
+      threads.insert(
+        0,
+        Thread(
+          id: id,
+          username: "Edward Kenway",
+          content: text,
+          timestamp: DateTime.now(),
+        ),
+      );
+    });
+
+    threadController.clear();
+  }
+
+  Future<String> _createThread(String text) async {
+    try {
+      String userId = FirebaseAuth.instance.currentUser!.uid;
+
+      final docRef =
+          await FirebaseFirestore.instance.collection('threads').add({
+        'text': text.trim(),
+        'userId': userId,
+        'createdAt': FieldValue.serverTimestamp(),
       });
+
+      print("THREAD CREADO: ${docRef.id}");
+
+      return docRef.id; // 🔥 CLAVE
+    } catch (e) {
+      print("ERROR creando thread: $e");
+      return "";
     }
   }
 
@@ -2030,10 +2322,27 @@ class _ProfilePageState extends State<Profilepage> {
     });
   }
 
-  void _addComment(Thread thread, String text) {
-    setState(() {
-      thread.comments.add(text);
-    });
+  Future<void> _addComment(String threadId, String text) async {
+    try {
+      String userId = FirebaseAuth.instance.currentUser!.uid;
+
+      print("THREAD ID USADO: $threadId");
+
+      await FirebaseFirestore.instance
+          .collection('threads')
+          .doc(threadId)
+          .collection('comments')
+          .add({
+        'text': text.trim(),
+        'userId': userId,
+        'createdAt': FieldValue.serverTimestamp(),
+      });
+
+      print("✅ COMENTARIO GUARDADO");
+    } catch (e, stack) {
+      print("❌ ERROR REAL: $e");
+      print(stack);
+    }
   }
 
   Widget _buildReactions(Thread thread) {
@@ -2162,15 +2471,19 @@ class _ProfilePageState extends State<Profilepage> {
                               ),
                             ),
                             IconButton(
-                              icon:
-                                  const Icon(Icons.send, color: Colors.white70),
-                              onPressed: () {
-                                if (commentController.text.isNotEmpty) {
-                                  _addComment(thread, commentController.text);
-                                  commentController.clear();
-                                }
-                              },
-                            ),
+                                icon: const Icon(Icons.send,
+                                    color: Colors.white70),
+                                onPressed: () async {
+                                  String text = commentController.text.trim();
+
+                                  if (text.isNotEmpty) {
+                                    await _addComment(
+                                        thread.id, text); // 🔥 AQUÍ
+
+                                    commentController.clear();
+                                    FocusScope.of(context).unfocus();
+                                  }
+                                }),
                           ],
                         )
                       ],
@@ -2282,22 +2595,29 @@ class _ProfilePageState extends State<Profilepage> {
           label: const Text("+"),
         ),
         const SizedBox(height: 10),
-        _videos.isEmpty
-            ? const Text("No hay videos aún",
-                style: TextStyle(color: Colors.white70))
+        _videoControllers.isEmpty
+            ? const Text(
+                "No hay videos aún",
+                style: TextStyle(color: Colors.white70),
+              )
             : ListView.builder(
                 shrinkWrap: true,
                 physics: const NeverScrollableScrollPhysics(),
-                itemCount: _videos.length,
+                itemCount: _videoControllers.length,
                 itemBuilder: (context, index) {
+                  final controller = _videoControllers[index];
+
                   return Container(
                     margin: const EdgeInsets.all(8),
-                    height: 220,
-                    color: Colors.black26,
-                    child: const Center(
-                      child: Icon(Icons.play_circle_fill,
-                          size: 100, color: Colors.white70),
-                    ),
+                    height: 250,
+                    child: controller.value.isInitialized
+                        ? AspectRatio(
+                            aspectRatio: controller.value.aspectRatio,
+                            child: VideoPlayer(controller),
+                          )
+                        : const Center(
+                            child: CircularProgressIndicator(),
+                          ),
                   );
                 },
               ),
@@ -2388,7 +2708,12 @@ class _ProfilePageState extends State<Profilepage> {
                                     image: FileImage(_coverImage!),
                                     fit: BoxFit.cover,
                                   )
-                                : null,
+                                : _coverImageUrl != null
+                                    ? DecorationImage(
+                                        image: NetworkImage(_coverImageUrl!),
+                                        fit: BoxFit.cover,
+                                      )
+                                    : null,
                           ),
                           child: _coverImage == null
                               ? Center(
@@ -2441,18 +2766,39 @@ class _ProfilePageState extends State<Profilepage> {
                               key: _iconKey,
                               description: "Change your profile picture 📝",
                               child: GestureDetector(
-                                onTap:
-                                    _pickProfileImage, // opcional: acción al tocar
-                                child: CircleAvatar(
-                                  radius: 50,
-                                  backgroundColor: Colors.grey.shade800,
-                                  backgroundImage: _profileImage != null
-                                      ? FileImage(_profileImage!)
-                                      : null,
-                                  child: _profileImage == null
-                                      ? Icon(Icons.person,
-                                          size: 50, color: Colors.white70)
-                                      : null,
+                                onTap: _pickProfileImage,
+                                child: Stack(
+                                  alignment: Alignment.center,
+                                  children: [
+                                    CircleAvatar(
+                                      radius: 50,
+                                      backgroundColor: Colors.grey.shade800,
+                                      backgroundImage: _profileImage != null
+                                          ? FileImage(_profileImage!)
+                                          : (_profileImageUrl != null
+                                              ? NetworkImage(_profileImageUrl!)
+                                              : null) as ImageProvider?,
+                                      child: (_profileImage == null &&
+                                              _profileImageUrl == null)
+                                          ? Icon(Icons.person,
+                                              size: 50, color: Colors.white70)
+                                          : null,
+                                    ),
+
+                                    // 🔄 Loader mientras sube
+                                    if (_isUploading)
+                                      Container(
+                                        width: 100,
+                                        height: 100,
+                                        decoration: BoxDecoration(
+                                          color: Colors.black45,
+                                          shape: BoxShape.circle,
+                                        ),
+                                        child: Center(
+                                          child: CircularProgressIndicator(),
+                                        ),
+                                      ),
+                                  ],
                                 ),
                               ),
                             ),
@@ -2682,7 +3028,7 @@ class _ProfilePageState extends State<Profilepage> {
                 case 2:
                   Navigator.pushAndRemoveUntil(
                     context,
-                    MaterialPageRoute(builder: (_) => const ChatScreen()),
+                    MaterialPageRoute(builder: (_) => ChatHomeScreen()),
                     (route) => false,
                   );
                   break;
@@ -2769,7 +3115,7 @@ class SettingsScreen extends StatelessWidget {
             case 2:
               Navigator.pushAndRemoveUntil(
                 context,
-                MaterialPageRoute(builder: (_) => const ChatScreen()),
+                MaterialPageRoute(builder: (_) => ChatHomeScreen()),
                 (route) => false,
               );
               break;
@@ -2946,6 +3292,93 @@ class _RightProfilePanel extends StatelessWidget {
 }
 // settings left, profile righ, list view (tutorial), profiles preferences (firebase)
 
+final DateTime now = DateTime.now();
+
+String generateChatId(String a, String b) {
+  final sorted = [a, b]..sort();
+  return '${sorted[0]}_${sorted[1]}';
+}
+
+// ─── Contact model ───────────────────────────────────────────────────────────
+
+class Contact {
+  final String id;
+  final String name;
+  final ImageProvider avatar;
+  final String lastMessage;
+  final DateTime lastMessageDate;
+
+  const Contact({
+    required this.id,
+    required this.name,
+    required this.avatar,
+    required this.lastMessage,
+    required this.lastMessageDate,
+  });
+}
+
+// ─── Sample data ─────────────────────────────────────────────────────────────
+
+final List<Contact> sampleContacts = [
+  Contact(
+    id: 'u1',
+    name: 'Alice',
+    avatar: const AssetImage('assets/images/Profile2.png'),
+    lastMessage: 'Hey, how are you?',
+    lastMessageDate: DateTime.now().subtract(const Duration(minutes: 10)),
+  ),
+  Contact(
+    id: 'u2',
+    name: 'Bob',
+    avatar: const AssetImage('assets/images/Profile2.png'),
+    lastMessage: 'See you tomorrow!',
+    lastMessageDate: DateTime.now().subtract(const Duration(hours: 2)),
+  ),
+  Contact(
+    id: 'u3',
+    name: 'Carol',
+    avatar: const AssetImage('assets/images/Profile2.png'),
+    lastMessage: 'Thanks!',
+    lastMessageDate: DateTime.now().subtract(const Duration(hours: 5)),
+  ),
+  Contact(
+    id: 'u4',
+    name: 'David',
+    avatar: const AssetImage('assets/images/Profile2.png'),
+    lastMessage: 'Ok sounds good',
+    lastMessageDate: DateTime.now().subtract(const Duration(days: 1)),
+  ),
+  Contact(
+    id: 'u5',
+    name: 'Eva',
+    avatar: const AssetImage('assets/images/Profile2.png'),
+    lastMessage: 'Call me later',
+    lastMessageDate: DateTime.now().subtract(const Duration(days: 2)),
+  ),
+];
+
+// ─── Feed models ─────────────────────────────────────────────────────────────
+
+enum FeedType { notification, thread, photo }
+
+class FeedItem {
+  final String id;
+  final Contact contact;
+  final FeedType type;
+  final String? content;
+  final String? imageUrl;
+  final DateTime timestamp;
+
+  FeedItem({
+    required this.id,
+    required this.contact,
+    required this.type,
+    this.content,
+    this.imageUrl,
+    required this.timestamp,
+  });
+}
+
 class ExploreScreen extends StatefulWidget {
   const ExploreScreen({
     super.key,
@@ -3096,7 +3529,7 @@ class _ExploreScreenState extends State<ExploreScreen> {
           } else if (index == 2) {
             Navigator.push(
               context,
-              MaterialPageRoute(builder: (_) => const ChatScreen()),
+              MaterialPageRoute(builder: (_) => const ChatHomeScreen()),
             );
           }
         },
@@ -3255,7 +3688,7 @@ class _FeedScreenState extends State<FeedScreen> {
           } else if (index == 2) {
             Navigator.push(
               context,
-              MaterialPageRoute(builder: (_) => const ChatScreen()),
+              MaterialPageRoute(builder: (_) => ChatHomeScreen()),
             );
           }
         },
@@ -3264,333 +3697,112 @@ class _FeedScreenState extends State<FeedScreen> {
   }
 }
 
-class ChatScreen extends StatefulWidget {
-  
-  const ChatScreen({
-    super.key,
-    this.city = "Desconocido",
-    this.time,
-  });
-
-  final String city;
-  final String? time;
+// --- Tab Layout ---
+class ChatHomeScreen extends StatefulWidget {
+  const ChatHomeScreen({super.key});
 
   @override
-  State<ChatScreen> createState() => _ChatScreenState();
-  
+  State<ChatHomeScreen> createState() => _ChatHomeScreenState();
 }
 
-
-  bool _isMenuOpen = false; // menú lateral (hamburguesa)
-
-// --- Data Models ---
-class Contact {
-  final String id;
-  final String name;
-  final String lastMessage;
-  final DateTime lastMessageDate;
-  final ImageProvider avatar; 
-
-  const Contact({
-    required this.id,
-    required this.name,
-    required this.lastMessage,
-    required this.lastMessageDate,
-    required this.avatar,
-  });
-}
-
-enum FeedType { notification, thread, photo }
-
-class FeedItem {
-  final String id;
-  // Assuming Contact is defined in your main file as before
-  final Contact contact;
-  final FeedType type;
-  final String? content;
-  final String? imageUrl;
-  final DateTime timestamp;
-
-  FeedItem({
-    required this.id,
-    required this.contact,
-    required this.type,
-    this.content,
-    this.imageUrl,
-    required this.timestamp,
-  });
-}
-
-// --- Global Sample Data ---
-final DateTime now = DateTime.now();
-final List<Contact> sampleContacts = [
-  Contact(
-    id: 'a2c4-56h8-9x01-2a3d',
-    name: 'Kike',
-    lastMessage: 'True! How about your wamitas?',
-    lastMessageDate: now.subtract(const Duration(minutes: 5)),
-    avatar: const AssetImage('assets/images/Profile1.png'),
-  ),
-  Contact(
-    id: '5f9b-3c7d-1e2f-4h5j',
-    name: 'Alice',
-    lastMessage: 'See you tomorrow at 9 AM.',
-    lastMessageDate: now.subtract(const Duration(hours: 1)),
-    avatar: const AssetImage('assets/images/Profile2.png'),
-  ),
-  Contact(
-    id: '1a2b-3c4d-5e6f-7g8h',
-    name: 'Bob',
-    lastMessage: 'The new design looks great!',
-    lastMessageDate: now.subtract(const Duration(hours: 3)),
-    avatar: const AssetImage('assets/images/Profile3.png'),
-  ),
-  Contact(
-    id: 'c1d2-e3f4-g5h6-i7j8',
-    name: 'Charlie',
-    lastMessage: 'Can we reschedule the meeting?',
-    lastMessageDate: now.subtract(const Duration(hours: 8)),
-    avatar: const AssetImage('assets/images/Profile4.png'),
-  ),
-  Contact(
-    id: 'k9l0-m1n2-o3p4-q5r6',
-    name: 'Santiago Cortés',
-    lastMessage: 'On my way!',
-    lastMessageDate: now.subtract(const Duration(days: 1)),
-    avatar: const AssetImage('assets/images/Profile5.png'),
-  ),
-  Contact(
-    id: 'a2c4-56h8-9x01-2a3d',
-    name: 'Kike',
-    lastMessage: 'True! How about your wamitas?',
-    lastMessageDate: now.subtract(const Duration(minutes: 5)),
-    avatar: const AssetImage('assets/images/Profile1.png'),
-  ),
-  Contact(
-    id: '5f9b-3c7d-1e2f-4h5j',
-    name: 'Alice',
-    lastMessage: 'See you tomorrow at 9 AM.',
-    lastMessageDate: now.subtract(const Duration(hours: 1)),
-    avatar: const AssetImage('assets/images/Profile2.png'),
-  ),
-  Contact(
-    id: '1a2b-3c4d-5e6f-7g8h',
-    name: 'Bob',
-    lastMessage: 'The new design looks great!',
-    lastMessageDate: now.subtract(const Duration(hours: 3)),
-    avatar: const AssetImage('assets/images/Profile3.png'),
-  ),
-  Contact(
-    id: 'c1d2-e3f4-g5h6-i7j8',
-    name: 'Charlie',
-    lastMessage: 'Can we reschedule the meeting?',
-    lastMessageDate: now.subtract(const Duration(hours: 8)),
-    avatar: const AssetImage('assets/images/Profile4.png'),
-  ),
-  Contact(
-    id: 'k9l0-m1n2-o3p4-q5r6',
-    name: 'Santiago Cortés',
-    lastMessage: 'On my way!',
-    lastMessageDate: now.subtract(const Duration(days: 1)),
-    avatar: const AssetImage('assets/images/Profile5.png'),
-  ),
-  Contact(
-    id: 'a2c4-56h8-9x01-2a3d',
-    name: 'Kike',
-    lastMessage: 'True! How about your wamitas?',
-    lastMessageDate: now.subtract(const Duration(minutes: 5)),
-    avatar: const AssetImage('assets/images/Profile1.png'),
-  ),
-  Contact(
-    id: '5f9b-3c7d-1e2f-4h5j',
-    name: 'Alice',
-    lastMessage: 'See you tomorrow at 9 AM.',
-    lastMessageDate: now.subtract(const Duration(hours: 1)),
-    avatar: const AssetImage('assets/images/Profile2.png'),
-  ),
-  Contact(
-    id: '1a2b-3c4d-5e6f-7g8h',
-    name: 'Bob',
-    lastMessage: 'The new design looks great!',
-    lastMessageDate: now.subtract(const Duration(hours: 3)),
-    avatar: const AssetImage('assets/images/Profile3.png'),
-  ),
-  Contact(
-    id: 'c1d2-e3f4-g5h6-i7j8',
-    name: 'Charlie',
-    lastMessage: 'Can we reschedule the meeting?',
-    lastMessageDate: now.subtract(const Duration(hours: 8)),
-    avatar: const AssetImage('assets/images/Profile4.png'),
-  ),
-  Contact(
-    id: 'k9l0-m1n2-o3p4-q5r6',
-    name: 'Santiago Cortés',
-    lastMessage: 'On my way!',
-    lastMessageDate: now.subtract(const Duration(days: 1)),
-    avatar: const AssetImage('assets/images/Profile5.png'),
-  ),
-];
-
-@override
-State<ChatScreen> createState() => _ChatScreenState();
-
-class _ChatScreenState extends State<ChatScreen> {
- void _restartTutorial() {
-    // lógica real aquí
-    debugPrint('Tutorial restarted');
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      extendBody: true,
-      body: Stack(
-        children: [
-          // 🔹 BACKGROUND
-          Container(
-            decoration: const BoxDecoration(
-              image: DecorationImage(
-                image: AssetImage('assets/images/BaseBackground.png'),
-                fit: BoxFit.cover,
-              ),
-            ),
-          ),
-
-          // 🔹 TAB CONTENT (Main Screen)
-          const MainScreenContent(),
-
-          // 🔹 SIDE MENU
-          AnimatedPositioned(
-            duration: const Duration(milliseconds: 300),
-            curve: Curves.easeInOut,
-            top: 0,
-            bottom: 0,
-            left: _isMenuOpen ? 0 : -260,
-            width: 260,
-            child: Material(
-              color: const Color.fromRGBO(45, 6, 9, 1),
-              elevation: 10,
-              child: SafeArea(
-                child: ListView(
-                  padding: const EdgeInsets.symmetric(vertical: 20),
-                  children: [
-                    const SizedBox(height: 20),
-                    ListTile(
-                      leading: const Icon(Icons.settings, color: Colors.white),
-                      title: const Text('Settings',
-                          style: TextStyle(color: Colors.white)),
-                      onTap: () => setState(() => _isMenuOpen = false),
-                    ),
-                    const Divider(color: Colors.white24),
-                  ],
-                ),
-              ),
-            ),
-          ),
-        ],
-      ),
-      appBar: AppBar(
-        title: const Text("ישוע",
-            style: TextStyle(
-                color: Color.fromRGBO(255, 239, 227, 0.9),
-                fontSize: 16,
-                fontWeight: FontWeight.w600)),
-        centerTitle: true,
-        leading: IconButton(
-          icon: const Icon(Icons.drag_handle_rounded,
-              color: Color.fromRGBO(255, 239, 227, 0.7)),
-          onPressed: () => setState(() => _isMenuOpen = !_isMenuOpen),
-        ),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.account_circle_rounded,
-                color: Color.fromRGBO(255, 239, 227, 0.5)),
-            onPressed: () {},
-          ),
-          const SizedBox(width: 10),
-        ],
-        backgroundColor: const Color.fromRGBO(45, 6, 9, 1),
-      ),
-      bottomNavigationBar: CurvedNavigationBar(
-        index: 1,
-        buttonBackgroundColor: const Color.fromRGBO(58, 27, 45, 1),
-        backgroundColor: Colors.transparent,
-        color: Colors.black,
-        animationCurve: Curves.easeInOut,
-        animationDuration: const Duration(milliseconds: 300),
-        items: [
-          const Icon(Icons.public_rounded,
-              color: Color.fromRGBO(255, 239, 227, 0.7)),
-          SvgPicture.asset(
-            'assets/images/Logo.svg',
-            height: 43,
-            width: 43,
-          ),
-          const Icon(Icons.chat, color: Color.fromRGBO(255, 239, 227, 0.7)),
-        ],
-        onTap: (index) {
-          if (index == 2) {
-            Navigator.push(
-              context,
-              MaterialPageRoute(builder: (_) => const ExploreScreen()),
-            );
-          } else if (index == 2) {
-            Navigator.push(
-              context,
-              MaterialPageRoute(builder: (_) => const ChatScreen()),
-            );
-          }
-        },
-      ),
-    );
-  }
-}
-
-// --- Tab Controller Layout ---
-class MainScreenContent extends StatelessWidget {
-  const MainScreenContent({super.key});
+class _ChatHomeScreenState extends State<ChatHomeScreen> {
+  int _currentIndex = 2;
 
   @override
   Widget build(BuildContext context) {
     return DefaultTabController(
       length: 3,
-      child: NestedScrollView(
-        headerSliverBuilder: (context, innerBoxIsScrolled) {
-          return [
-            SliverAppBar(
-              automaticallyImplyLeading: false,
-              backgroundColor: const Color.fromRGBO(45, 6, 9, 1),
-              floating: true,
-              snap: true,
-              toolbarHeight: 0, // AppBar logic is handled by ChatScreen
-              bottom: const TabBar(
-                indicatorColor: Color.fromRGBO(255, 239, 227, 1),
-                labelColor: Color.fromRGBO(255, 239, 227, 1),
-                unselectedLabelColor: Colors.white54,
-                tabs: [
-                  Tab(icon: Icon(Icons.message), text: "Chats"),
-                  Tab(icon: Icon(Icons.call), text: "Calls"),
-                  Tab(icon: Icon(Icons.circle_outlined), text: "Feed"),
-                ],
+      child: Scaffold(
+        backgroundColor: const Color.fromRGBO(45, 6, 9, 1),
+        body: NestedScrollView(
+          headerSliverBuilder: (context, innerBoxIsScrolled) {
+            return [
+              SliverAppBar(
+                automaticallyImplyLeading: false,
+                backgroundColor: const Color.fromRGBO(45, 6, 9, 1),
+                floating: true,
+                snap: true,
+                toolbarHeight: 0,
+                bottom: const TabBar(
+                  indicatorColor: Color.fromRGBO(255, 239, 227, 1),
+                  labelColor: Color.fromRGBO(255, 239, 227, 1),
+                  unselectedLabelColor: Colors.white54,
+                  tabs: [
+                    Tab(
+                      icon: Icon(Icons.message),
+                      text: "Chats",
+                    ),
+                    Tab(
+                      icon: Icon(Icons.call),
+                      text: "Calls",
+                    ),
+                    Tab(
+                      icon: Icon(Icons.circle_outlined),
+                      text: "Feed",
+                    ),
+                  ],
+                ),
               ),
+            ];
+          },
+          body: const TabBarView(
+            children: [
+              ChatsTab(),
+              CallsTab(),
+              NotificationsTab(),
+            ],
+          ),
+        ),
+        bottomNavigationBar: CurvedNavigationBar(
+          index: _currentIndex,
+          buttonBackgroundColor: const Color.fromRGBO(58, 27, 45, 1),
+          backgroundColor: Colors.transparent,
+          color: Colors.black,
+          items: [
+            const Icon(
+              Icons.public_rounded,
+              color: Color.fromRGBO(255, 239, 227, 0.7),
             ),
-          ];
-        },
-        body: const TabBarView(
-          children: [
-            ChatsTab(),
-            CallsTab(),
-            NotificationsTab(),
+            SvgPicture.asset(
+              'assets/images/Logo.svg',
+              height: 43,
+              width: 43,
+            ),
+            const Icon(
+              Icons.chat,
+              color: Color.fromRGBO(255, 239, 227, 0.7),
+            ),
           ],
+          onTap: (index) {
+            setState(() {
+              _currentIndex = index;
+            });
+
+            if (index == 0) {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (_) => const ExploreScreen(),
+                ),
+              );
+            }
+          },
         ),
       ),
     );
   }
 }
 
-// --- Chats Tab Implementation ---
-class ChatsTab extends StatelessWidget {
+// --- Chats Tab ---
+class ChatsTab extends StatefulWidget {
   const ChatsTab({super.key});
+
+  @override
+  State<ChatsTab> createState() => _ChatsTabState();
+}
+
+class _ChatsTabState extends State<ChatsTab> {
+  final currentUser = FirebaseAuth.instance.currentUser!;
 
   @override
   Widget build(BuildContext context) {
@@ -3600,6 +3812,7 @@ class ChatsTab extends StatelessWidget {
       color: const Color.fromRGBO(45, 6, 9, 1),
       child: Column(
         children: [
+          // Stories
           SizedBox(
             height: 110,
             child: ListView.builder(
@@ -3613,29 +3826,69 @@ class ChatsTab extends StatelessWidget {
             ),
           ),
           const Divider(color: Color.fromRGBO(255, 239, 227, 0.1), height: 1),
+
+          // Lista de usuarios reales desde Firestore
           Expanded(
-            child: ListView.separated(
-              itemCount: sampleContacts.length,
-              separatorBuilder: (_, __) => const Divider(color: Colors.white10),
-              itemBuilder: (context, index) {
-                final contact = sampleContacts[index];
-                return ListTile(
-                  leading: CircleAvatar(backgroundImage: contact.avatar),
-                  title: Text(contact.name,
-                      style: const TextStyle(color: Colors.white)),
-                  subtitle: Text(contact.lastMessage,
-                      style: const TextStyle(color: Colors.white70),
-                      maxLines: 1),
-                  trailing: Text(
-                      DateFormat.jm().format(contact.lastMessageDate),
-                      style:
-                          const TextStyle(color: Colors.white54, fontSize: 12)),
-                  onTap: () => Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                          builder: (_) => ChatSample(
-                              contactName: contact.name,
-                              targetContact: contact))),
+            child: FutureBuilder<QuerySnapshot>(
+              future: FirebaseFirestore.instance
+                  .collection('users')
+                  .get()
+                  .then((snap) {
+                snap.docs.removeWhere((doc) => doc.id == currentUser.uid);
+                return snap;
+              }),
+              builder: (context, snapshot) {
+                if (snapshot.connectionState == ConnectionState.waiting) {
+                  return const Center(child: CircularProgressIndicator());
+                }
+                if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
+                  return const Center(
+                    child: Text('No users found',
+                        style: TextStyle(color: Colors.white54)),
+                  );
+                }
+
+                final users = snapshot.data!.docs;
+
+                return ListView.separated(
+                  itemCount: users.length,
+                  separatorBuilder: (_, __) =>
+                      const Divider(color: Colors.white10),
+                  itemBuilder: (context, index) {
+                    final data = users[index].data() as Map<String, dynamic>;
+                    final uid = users[index].id;
+                    final name = data['name'] ?? 'Unknown';
+                    final email = data['email'] ?? '';
+
+                    final contact = Contact(
+                      id: uid,
+                      name: name,
+                      avatar: const AssetImage('assets/images/Profile2.png'),
+                      lastMessage: email,
+                      lastMessageDate: DateTime.now(),
+                    );
+
+                    return ListTile(
+                      leading: const CircleAvatar(
+                        backgroundImage:
+                            AssetImage('assets/images/Profile2.png'),
+                      ),
+                      title: Text(name,
+                          style: const TextStyle(color: Colors.white)),
+                      subtitle: Text(email,
+                          style: const TextStyle(color: Colors.white70),
+                          maxLines: 1),
+                      onTap: () => Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (_) => ChatScreen(
+                            contactName: name,
+                            targetContact: contact,
+                          ),
+                        ),
+                      ),
+                    );
+                  },
                 );
               },
             ),
@@ -3655,15 +3908,17 @@ class ChatsTab extends StatelessWidget {
               backgroundColor: Colors.grey,
               child: Icon(Icons.person, color: Colors.white)),
           Positioned(
-              bottom: 0,
-              right: 0,
-              child: Container(
-                  decoration: const BoxDecoration(
-                      color: Colors.blue, shape: BoxShape.circle),
-                  child: const Icon(Icons.add, color: Colors.white, size: 16))),
+            bottom: 0,
+            right: 0,
+            child: Container(
+              decoration: const BoxDecoration(
+                  color: Colors.blue, shape: BoxShape.circle),
+              child: const Icon(Icons.add, color: Colors.white, size: 16),
+            ),
+          ),
         ]),
         const Text("Add Story",
-            style: TextStyle(color: Colors.white70, fontSize: 11))
+            style: TextStyle(color: Colors.white70, fontSize: 11)),
       ]),
     );
   }
@@ -3675,13 +3930,15 @@ class ChatsTab extends StatelessWidget {
         Container(
           padding: const EdgeInsets.all(2.5),
           decoration: BoxDecoration(
-              shape: BoxShape.circle,
-              border: Border.all(
-                  color: isSeen ? Colors.white24 : Colors.blue, width: 2.5)),
+            shape: BoxShape.circle,
+            border: Border.all(
+                color: isSeen ? Colors.white24 : Colors.blue, width: 2.5),
+          ),
           child: Opacity(
-              opacity: isSeen ? 0.4 : 1.0,
-              child: const CircleAvatar(
-                  radius: 26, backgroundColor: Colors.blueGrey)),
+            opacity: isSeen ? 0.4 : 1.0,
+            child: const CircleAvatar(
+                radius: 26, backgroundColor: Colors.blueGrey),
+          ),
         ),
         Text(name,
             style: TextStyle(
@@ -3695,221 +3952,43 @@ class ChatsTab extends StatelessWidget {
 class CallsTab extends StatelessWidget {
   const CallsTab({super.key});
 
-  // Moved inside the class to fix the "method not defined" error
   List<Map<String, dynamic>> _generateCallHistory() {
     final DateFormat df = DateFormat('MMM d • h:mm a');
-
-    // Note: sampleContacts should be defined globally or passed to this widget
     return [
       {
         'contact': sampleContacts[0],
         'type': 'incoming',
         'missed': false,
         'video': false,
-        'time': df.format(DateTime.now().subtract(const Duration(minutes: 20))),
+        'time': df.format(now.subtract(const Duration(minutes: 20))),
       },
       {
         'contact': sampleContacts[1],
         'type': 'outgoing',
         'missed': false,
         'video': true,
-        'time': df.format(DateTime.now().subtract(const Duration(hours: 1))),
+        'time': df.format(now.subtract(const Duration(hours: 1))),
       },
       {
         'contact': sampleContacts[2],
         'type': 'incoming',
         'missed': true,
         'video': false,
-        'time': df.format(DateTime.now().subtract(const Duration(hours: 4))),
+        'time': df.format(now.subtract(const Duration(hours: 4))),
       },
       {
         'contact': sampleContacts[3],
         'type': 'outgoing',
         'missed': false,
         'video': false,
-        'time': df.format(DateTime.now().subtract(const Duration(days: 1))),
+        'time': df.format(now.subtract(const Duration(days: 1))),
       },
       {
         'contact': sampleContacts[4],
         'type': 'outgoing',
         'missed': false,
         'video': false,
-        'time': df.format(DateTime.now().subtract(const Duration(days: 1))),
-      },
-      {
-        'contact': sampleContacts[5],
-        'type': 'outgoing',
-        'missed': false,
-        'video': false,
-        'time': df.format(DateTime.now().subtract(const Duration(days: 1))),
-      },
-      {
-        'contact': sampleContacts[0],
-        'type': 'incoming',
-        'missed': false,
-        'video': false,
-        'time': df.format(DateTime.now().subtract(const Duration(minutes: 20))),
-      },
-      {
-        'contact': sampleContacts[1],
-        'type': 'outgoing',
-        'missed': false,
-        'video': true,
-        'time': df.format(DateTime.now().subtract(const Duration(hours: 1))),
-      },
-      {
-        'contact': sampleContacts[2],
-        'type': 'incoming',
-        'missed': true,
-        'video': false,
-        'time': df.format(DateTime.now().subtract(const Duration(hours: 4))),
-      },
-      {
-        'contact': sampleContacts[3],
-        'type': 'outgoing',
-        'missed': false,
-        'video': false,
-        'time': df.format(DateTime.now().subtract(const Duration(days: 1))),
-      },
-      {
-        'contact': sampleContacts[4],
-        'type': 'outgoing',
-        'missed': false,
-        'video': false,
-        'time': df.format(DateTime.now().subtract(const Duration(days: 1))),
-      },
-      {
-        'contact': sampleContacts[5],
-        'type': 'outgoing',
-        'missed': false,
-        'video': false,
-        'time': df.format(DateTime.now().subtract(const Duration(days: 1))),
-      },
-      {
-        'contact': sampleContacts[0],
-        'type': 'incoming',
-        'missed': false,
-        'video': false,
-        'time': df.format(DateTime.now().subtract(const Duration(minutes: 20))),
-      },
-      {
-        'contact': sampleContacts[1],
-        'type': 'outgoing',
-        'missed': false,
-        'video': true,
-        'time': df.format(DateTime.now().subtract(const Duration(hours: 1))),
-      },
-      {
-        'contact': sampleContacts[2],
-        'type': 'incoming',
-        'missed': true,
-        'video': false,
-        'time': df.format(DateTime.now().subtract(const Duration(hours: 4))),
-      },
-      {
-        'contact': sampleContacts[3],
-        'type': 'outgoing',
-        'missed': false,
-        'video': false,
-        'time': df.format(DateTime.now().subtract(const Duration(days: 1))),
-      },
-      {
-        'contact': sampleContacts[4],
-        'type': 'outgoing',
-        'missed': false,
-        'video': false,
-        'time': df.format(DateTime.now().subtract(const Duration(days: 1))),
-      },
-      {
-        'contact': sampleContacts[5],
-        'type': 'outgoing',
-        'missed': false,
-        'video': false,
-        'time': df.format(DateTime.now().subtract(const Duration(days: 1))),
-      },
-      {
-        'contact': sampleContacts[0],
-        'type': 'incoming',
-        'missed': false,
-        'video': false,
-        'time': df.format(DateTime.now().subtract(const Duration(minutes: 20))),
-      },
-      {
-        'contact': sampleContacts[1],
-        'type': 'outgoing',
-        'missed': false,
-        'video': true,
-        'time': df.format(DateTime.now().subtract(const Duration(hours: 1))),
-      },
-      {
-        'contact': sampleContacts[2],
-        'type': 'incoming',
-        'missed': true,
-        'video': false,
-        'time': df.format(DateTime.now().subtract(const Duration(hours: 4))),
-      },
-      {
-        'contact': sampleContacts[3],
-        'type': 'outgoing',
-        'missed': false,
-        'video': false,
-        'time': df.format(DateTime.now().subtract(const Duration(days: 1))),
-      },
-      {
-        'contact': sampleContacts[4],
-        'type': 'outgoing',
-        'missed': false,
-        'video': false,
-        'time': df.format(DateTime.now().subtract(const Duration(days: 1))),
-      },
-      {
-        'contact': sampleContacts[5],
-        'type': 'outgoing',
-        'missed': false,
-        'video': false,
-        'time': df.format(DateTime.now().subtract(const Duration(days: 1))),
-      },
-      {
-        'contact': sampleContacts[0],
-        'type': 'incoming',
-        'missed': false,
-        'video': false,
-        'time': df.format(DateTime.now().subtract(const Duration(minutes: 20))),
-      },
-      {
-        'contact': sampleContacts[1],
-        'type': 'outgoing',
-        'missed': false,
-        'video': true,
-        'time': df.format(DateTime.now().subtract(const Duration(hours: 1))),
-      },
-      {
-        'contact': sampleContacts[2],
-        'type': 'incoming',
-        'missed': true,
-        'video': false,
-        'time': df.format(DateTime.now().subtract(const Duration(hours: 4))),
-      },
-      {
-        'contact': sampleContacts[3],
-        'type': 'outgoing',
-        'missed': false,
-        'video': false,
-        'time': df.format(DateTime.now().subtract(const Duration(days: 1))),
-      },
-      {
-        'contact': sampleContacts[4],
-        'type': 'outgoing',
-        'missed': false,
-        'video': false,
-        'time': df.format(DateTime.now().subtract(const Duration(days: 1))),
-      },
-      {
-        'contact': sampleContacts[5],
-        'type': 'outgoing',
-        'missed': false,
-        'video': false,
-        'time': df.format(DateTime.now().subtract(const Duration(days: 1))),
+        'time': df.format(now.subtract(const Duration(days: 1))),
       },
     ];
   }
@@ -3937,10 +4016,8 @@ class CallsTab extends StatelessWidget {
                 radius: 25,
                 backgroundImage: call['contact'].avatar,
               ),
-              title: Text(
-                call['contact'].name,
-                style: const TextStyle(color: Colors.white, fontSize: 16),
-              ),
+              title: Text(call['contact'].name,
+                  style: const TextStyle(color: Colors.white, fontSize: 16)),
               subtitle: Row(
                 children: [
                   Icon(
@@ -3951,12 +4028,8 @@ class CallsTab extends StatelessWidget {
                     color: call['missed'] ? Colors.redAccent : Colors.green,
                   ),
                   const SizedBox(width: 6),
-                  Text(
-                    "${call['time']}",
-                    style: const TextStyle(
-                      color: Colors.white, // Updated to white
-                    ),
-                  )
+                  Text(call['time'],
+                      style: const TextStyle(color: Colors.white)),
                 ],
               ),
               trailing: Icon(
@@ -3964,13 +4037,14 @@ class CallsTab extends StatelessWidget {
                 color: const Color.fromRGBO(255, 239, 227, 1),
               ),
             );
-          })
+          }),
         ],
       ),
     );
   }
 }
 
+// --- Feed / Notifications Tab ---
 class NotificationsTab extends StatefulWidget {
   const NotificationsTab({super.key});
 
@@ -3984,15 +4058,13 @@ class _NotificationsTabState extends State<NotificationsTab> {
   @override
   void initState() {
     super.initState();
-    // Mix sample data: Notifications, Threads, and Photos
-    // Note: sampleContacts is assumed to be defined in your main file
     feedItems = [
       FeedItem(
         id: 'f1',
         contact: sampleContacts[0],
         type: FeedType.notification,
         content: "Mentioned you in a comment",
-        timestamp: DateTime.now().subtract(const Duration(minutes: 5)),
+        timestamp: now.subtract(const Duration(minutes: 5)),
       ),
       FeedItem(
         id: 'f2',
@@ -4000,7 +4072,7 @@ class _NotificationsTabState extends State<NotificationsTab> {
         type: FeedType.thread,
         content:
             "Does anyone know if the coffee shop is open? I'm starving! ☕️",
-        timestamp: DateTime.now().subtract(const Duration(hours: 1)),
+        timestamp: now.subtract(const Duration(hours: 1)),
       ),
       FeedItem(
         id: 'f3',
@@ -4008,14 +4080,14 @@ class _NotificationsTabState extends State<NotificationsTab> {
         type: FeedType.photo,
         imageUrl: 'assets/images/C2.jpg',
         content: "Beautiful sunset today! #nature",
-        timestamp: DateTime.now().subtract(const Duration(hours: 2)),
+        timestamp: now.subtract(const Duration(hours: 2)),
       ),
       FeedItem(
         id: 'f4',
         contact: sampleContacts[3],
         type: FeedType.notification,
         content: "Sent you a friend request",
-        timestamp: DateTime.now().subtract(const Duration(days: 1)),
+        timestamp: now.subtract(const Duration(days: 1)),
       ),
     ];
   }
@@ -4047,13 +4119,12 @@ class _NotificationsTabState extends State<NotificationsTab> {
                                     key: Key(item.id),
                                     onDismissed: (_) => setState(
                                         () => feedItems.removeAt(index)),
-                                    // Swipe Right = Read
                                     secondaryBackground: _buildSwipeBanner(
                                       label: "UNREAD",
-                                      color: Color.fromRGBO(255, 239, 227, 0.7),
+                                      color: const Color.fromRGBO(
+                                          255, 239, 227, 0.7),
                                       alignment: Alignment.centerRight,
                                     ),
-                                    // Swipe Left = Unread
                                     background: _buildSwipeBanner(
                                       label: "READ",
                                       color: Colors.blue,
@@ -4076,36 +4147,14 @@ class _NotificationsTabState extends State<NotificationsTab> {
       ),
     );
   }
-  Widget _buildDismissibleCard(int index, FeedItem item) {
-    if (index != feedItems.length - 1) {
-      return Transform.scale(scale: 0.95, child: _buildFeedCard(item));
-    }
-    return Dismissible(
-      key: Key(item.id),
-      onDismissed: (_) => setState(() => feedItems.removeAt(index)),
-      background: _buildSwipeBanner(
-          label: "READ", color: Colors.blue, alignment: Alignment.centerLeft),
-      secondaryBackground: _buildSwipeBanner(
-          label: "UNREAD",
-          color: Colors.orange,
-          alignment: Alignment.centerRight),
-      child: _buildFeedCard(item),
-    );
-  }
-  // Helper to build the large "Read/Unread" banners
+
   Widget _buildSwipeBanner({
     required String label,
-    required Color
-        color, // This parameter can now be overridden by the logic below
+    required Color color,
     required Alignment alignment,
   }) {
-    // Define your custom colors
     const Color readColor = Color.fromRGBO(255, 239, 227, 0.7);
     const Color unreadColor = Colors.blue;
-
-    // Determine which theme to use based on alignment
-    // centerRight = Swiping towards the right (Read)
-    // centerLeft = Swiping towards the left (Unread)
     bool isRead = alignment == Alignment.centerRight;
     Color activeColor = isRead ? readColor : unreadColor;
     return Container(
@@ -4115,8 +4164,8 @@ class _NotificationsTabState extends State<NotificationsTab> {
         borderRadius: BorderRadius.circular(30),
         gradient: LinearGradient(
           colors: isRead
-              ? [Colors.transparent, readColor] // Gradient for Read
-              : [unreadColor, Colors.transparent], // Gradient for Unread
+              ? [Colors.transparent, readColor]
+              : [unreadColor, Colors.transparent],
           begin: Alignment.centerLeft,
           end: Alignment.centerRight,
         ),
@@ -4125,16 +4174,15 @@ class _NotificationsTabState extends State<NotificationsTab> {
         child: Text(
           label,
           style: TextStyle(
-            color: activeColor, // Set the text color to match the theme
+            color: activeColor,
             fontWeight: FontWeight.w900,
             fontSize: 48,
             letterSpacing: 3,
             shadows: const [
               Shadow(
-                blurRadius: 5.0,
-                color: Colors.black,
-                offset: Offset(1.0, 1.0),
-              ),
+                  blurRadius: 5.0,
+                  color: Colors.black,
+                  offset: Offset(1.0, 1.0)),
             ],
           ),
         ),
@@ -4167,11 +4215,8 @@ class _NotificationsTabState extends State<NotificationsTab> {
             ),
             if (item.type == FeedType.photo && item.imageUrl != null)
               Expanded(
-                child: Image.asset(
-                  item.imageUrl!,
-                  width: double.infinity,
-                  fit: BoxFit.cover,
-                ),
+                child: Image.asset(item.imageUrl!,
+                    width: double.infinity, fit: BoxFit.cover),
               ),
             Expanded(
               child: SingleChildScrollView(
@@ -4219,7 +4264,7 @@ class _NotificationsTabState extends State<NotificationsTab> {
                   const SizedBox(width: 10),
                 ],
               ),
-            )
+            ),
           ],
         ),
       ),
@@ -4227,75 +4272,80 @@ class _NotificationsTabState extends State<NotificationsTab> {
   }
 }
 
-// --- Chat Screen ---
-class ChatSample extends StatefulWidget {
+// --- ChatSample ---
+class ChatScreen extends StatefulWidget {
   final String contactName;
   final Contact targetContact;
 
-  const ChatSample(
-      {super.key, required this.contactName, required this.targetContact});
+  const ChatScreen({
+    super.key,
+    required this.contactName,
+    required this.targetContact,
+  });
 
   @override
-  State<ChatSample> createState() => ChatSampleState();
+  State<ChatScreen> createState() => ChatScreenState();
 }
 
-class ChatSampleState extends State<ChatSample> {
-  late List<ChatMessage> _messages;
+class ChatScreenState extends State<ChatScreen> {
+  late String chatId;
+  late ChatAuthor currentUser;
 
-  final ChatAuthor currentUser = const ChatAuthor(
-    avatar: AssetImage('assets/images/Profile2.png'),
-    id: '8ob3-b720-g9s6-25s8',
-    name: 'Santi',
-  );
+  final TextEditingController _messageController = TextEditingController();
 
   @override
   void initState() {
     super.initState();
-    _messages = _generateMessagesForContact(widget.targetContact, currentUser);
+
+    final firebaseUser = FirebaseAuth.instance.currentUser!;
+
+    currentUser = ChatAuthor(
+      avatar: const AssetImage('assets/images/Profile2.png'),
+      id: firebaseUser.uid,
+      name: firebaseUser.displayName ?? firebaseUser.email ?? 'Usuario',
+    );
+
+    chatId = generateChatId(
+      currentUser.id,
+      widget.targetContact.id,
+    );
+
+    _initChat();
   }
 
-  List<ChatMessage> _generateMessagesForContact(
-      Contact contact, ChatAuthor user) {
-    final List<String> convo = [
-      "Hey ${contact.name}! What's up?",
-      "Hello! Not much, just working on some stuff.",
-      "Cool. How is the project going?",
-      "It's progressing well, challenging but fun.",
-      "I finally figured out how to use the bottom nav bar in Flutter.",
-      "Oh yeah? Nice job, I saw the code it looks clean.",
-      "Thanks! Are we still on for the meetup tomorrow?",
-      "Yeah, 7 PM at the usual spot works for me.",
-      "Sounds perfect. I'm looking forward to it.",
-      "Me too, it's been a while.",
-      "Definitely. How is Autumn the cat?",
-      "She's great, currently sleeping on my keyboard.",
-      "Typical cat behavior.",
-      "Haha, exactly.",
-      "See you tomorrow then!",
-      "Later!",
-      contact.lastMessage,
-    ];
+  @override
+  void dispose() {
+    _messageController.dispose();
+    super.dispose();
+  }
 
-    List<ChatMessage> generated = [];
-    DateTime time = now.subtract(Duration(minutes: 60));
-
-    for (int i = 0; i < convo.length; i++) {
-      bool isUserMessage = i % 2 == 0;
-      generated.add(
-        ChatMessage(
-          text: convo[i],
-          time: time.add(Duration(minutes: i)),
-          author: isUserMessage
-              ? user
-              : ChatAuthor(
-                  avatar: contact.avatar,
-                  id: contact.id,
-                  name: contact.name,
-                ),
-        ),
-      );
+  Future<void> _initChat() async {
+    final chatRef = FirebaseFirestore.instance.collection('chats').doc(chatId);
+    final doc = await chatRef.get();
+    if (!doc.exists) {
+      await chatRef.set({
+        'users': [currentUser.id, widget.targetContact.id],
+        'createdAt': FieldValue.serverTimestamp(),
+      });
     }
-    return generated;
+  }
+
+  void _sendMessage(String text) {
+    if (text.trim().isEmpty) return;
+    FirebaseFirestore.instance
+        .collection('chats')
+        .doc(chatId)
+        .collection('messages')
+        .add({
+      'text': text,
+      'senderId': currentUser.id,
+      'timestamp': FieldValue.serverTimestamp(),
+    });
+    FirebaseFirestore.instance.collection('chats').doc(chatId).set({
+      'users': [currentUser.id, widget.targetContact.id],
+      'lastMessage': text,
+      'updatedAt': FieldValue.serverTimestamp(),
+    }, SetOptions(merge: true));
   }
 
   @override
@@ -4309,91 +4359,116 @@ class ChatSampleState extends State<ChatSample> {
             const TextStyle(color: Color.fromRGBO(255, 239, 227, 1)),
         backgroundColor: const Color.fromRGBO(45, 6, 9, 1),
       ),
-      body: Stack(
-        children: [
-          Container(
-            decoration: const BoxDecoration(
-              color: Color.fromRGBO(58, 27, 22, 0.3),
-              image: DecorationImage(
-                image: AssetImage('assets/images/C2.jpg'),
-                repeat: ImageRepeat.repeat,
-                opacity: 0.3,
-              ),
-            ),
-          ),
-          Padding(
-            padding: const EdgeInsets.all(10.0),
-            child: SfChat(
-              incomingMessageSettings: const ChatMessageSettings(
-                backgroundColor: Color.fromRGBO(0, 0, 0, 1),
-                textStyle: TextStyle(color: Color.fromRGBO(255, 239, 227, 1)),
-                shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.all(Radius.circular(12))),
-                headerTextStyle: TextStyle(
-                    color: Color.fromRGBO(255, 239, 227, 0.7),
-                    fontWeight: FontWeight.bold),
-              ),
-              outgoingMessageSettings: const ChatMessageSettings(
-                backgroundColor: Color.fromRGBO(45, 6, 9, 1),
-                textStyle: TextStyle(color: Color.fromRGBO(255, 239, 227, 1)),
-                shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.all(Radius.circular(12))),
-                headerTextStyle: TextStyle(
-                    color: Color.fromRGBO(255, 239, 227, 0.7),
-                    fontWeight: FontWeight.bold),
-              ),
-              messages: _messages,
-              outgoingUser: currentUser.id,
-              composer: const ChatComposer(
-                textStyle: TextStyle(color: Color.fromRGBO(255, 239, 227, 1)),
-                decoration: InputDecoration(
-                  focusedBorder: OutlineInputBorder(
-                      borderSide:
-                          BorderSide(color: Color.fromRGBO(45, 6, 9, 1)),
-                      borderRadius: BorderRadius.all(Radius.circular(100))),
-                  hintText: 'Start Typing...',
-                  hintStyle:
-                      TextStyle(color: Color.fromRGBO(255, 239, 227, 0.7)),
-                  filled: true,
-                  fillColor: Color.fromRGBO(45, 6, 9, 1),
-                  focusColor: Color.fromRGBO(45, 6, 9, 1),
-                ),
-              ),
-              actionButton: ChatActionButton(
-                backgroundColor: Color.fromRGBO(255, 239, 227, 1),
-                foregroundColor: Color.fromRGBO(45, 6, 9, 1),
-                onPressed: (String newMessage) {
-                  setState(() {
-                    _messages.add(ChatMessage(
-                      text: newMessage,
-                      time: DateTime.now(),
-                      author: currentUser,
-                    ));
-                  });
+      body: SafeArea(
+        child: Column(
+          children: [
+            Expanded(
+              child: StreamBuilder<QuerySnapshot>(
+                stream: FirebaseFirestore.instance
+                    .collection('chats')
+                    .doc(chatId)
+                    .collection('messages')
+                    .orderBy('timestamp', descending: false)
+                    .snapshots(),
+                builder: (context, snapshot) {
+                  if (snapshot.connectionState == ConnectionState.waiting) {
+                    return const Center(child: CircularProgressIndicator());
+                  }
+
+                  if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
+                    return const Center(
+                      child: Text(
+                        "No messages yet",
+                        style: TextStyle(color: Colors.white54),
+                      ),
+                    );
+                  }
+
+                  final messages = snapshot.data!.docs;
+
+                  return ListView.builder(
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 12, vertical: 10),
+                    itemCount: messages.length,
+                    itemBuilder: (context, index) {
+                      final data =
+                          messages[index].data() as Map<String, dynamic>;
+                      final isMe = data['senderId'] == currentUser.id;
+                      final text = data['text'] ?? '';
+
+                      return Align(
+                        alignment:
+                            isMe ? Alignment.centerRight : Alignment.centerLeft,
+                        child: Container(
+                          margin: const EdgeInsets.symmetric(vertical: 4),
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 14, vertical: 10),
+                          decoration: BoxDecoration(
+                            color: isMe
+                                ? const Color.fromRGBO(106, 41, 45, 1)
+                                : const Color.fromRGBO(58, 27, 45, 1),
+                            borderRadius: BorderRadius.only(
+                              topLeft: const Radius.circular(16),
+                              topRight: const Radius.circular(16),
+                              bottomLeft: Radius.circular(isMe ? 16 : 0),
+                              bottomRight: Radius.circular(isMe ? 0 : 16),
+                            ),
+                          ),
+                          child: Text(
+                            text,
+                            style: const TextStyle(
+                                color: Colors.white, fontSize: 15),
+                          ),
+                        ),
+                      );
+                    },
+                  );
                 },
               ),
             ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-// --- Utils ---
-class CurvedNavigationBarPlaceholder extends StatelessWidget {
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      height: 60,
-      color: Colors.black,
-      child: const Row(
-        mainAxisAlignment: MainAxisAlignment.spaceAround,
-        children: [
-          Icon(Icons.public_rounded, color: Colors.white70),
-          Icon(Icons.home, color: Colors.white),
-          Icon(Icons.chat, color: Colors.white70),
-        ],
+            Container(
+              padding: const EdgeInsets.symmetric(
+                horizontal: 12,
+                vertical: 10,
+              ),
+              color: const Color.fromRGBO(45, 6, 9, 1),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: TextField(
+                      controller: _messageController,
+                      style: const TextStyle(color: Colors.white),
+                      decoration: InputDecoration(
+                        hintText: 'Type a message...',
+                        hintStyle: const TextStyle(color: Colors.white54),
+                        filled: true,
+                        fillColor: const Color.fromRGBO(58, 27, 22, 1),
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(30),
+                          borderSide: BorderSide.none,
+                        ),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 10),
+                  CircleAvatar(
+                    backgroundColor: const Color.fromRGBO(255, 239, 227, 1),
+                    child: IconButton(
+                      icon: const Icon(
+                        Icons.send,
+                        color: Colors.black,
+                      ),
+                      onPressed: () {
+                        _sendMessage(_messageController.text);
+                        _messageController.clear();
+                      },
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
