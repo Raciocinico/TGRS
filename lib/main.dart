@@ -3,6 +3,10 @@ import 'package:english_words/english_words.dart';
 import 'package:provider/provider.dart';
 import 'package:flutter/services.dart';
 import 'dart:convert';
+import 'package:record/record.dart';
+import 'package:just_audio/just_audio.dart';
+import 'package:permission_handler/permission_handler.dart';
+import 'package:path_provider/path_provider.dart';
 import 'dart:io';
 import 'dart:async';
 import 'package:flutter_typeahead/flutter_typeahead.dart';
@@ -92,54 +96,55 @@ class MyAppState extends ChangeNotifier {
   var current = WordPair.random();
 }
 
-class SplashScreen extends StatefulWidget {
+class SplashScreen extends StatelessWidget {
   const SplashScreen({super.key});
 
   @override
-  State<SplashScreen> createState() => _SplashScreenState();
-}
-
-class _SplashScreenState extends State<SplashScreen> {
-  @override
-  void initState() {
-    super.initState();
-
-    // Espera 1 segundo y redirige automáticamente
-    Future.delayed(const Duration(seconds: 1), () {
-      // 👇 Verifica que el widget siga montado antes de navegar
-      if (mounted) {
-        Navigator.pushReplacement(
-          context,
-          MaterialPageRoute(builder: (context) => const HomeScreen()),
-        );
-      }
-    });
-  }
-
-  @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: Color.fromRGBO(37, 22, 21, 80),
-      body: Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            SvgPicture.asset(
-              'assets/images/Logo.svg',
-              width: 150,
-              height: 150,
+    return StreamBuilder<User?>(
+      stream: FirebaseAuth.instance.authStateChanges(),
+      builder: (context, snapshot) {
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return const Scaffold(
+            body: Center(
+              child: CircularProgressIndicator(),
             ),
-            const SizedBox(height: 20),
-            Image.asset(
-              'assets/images/vg.png',
-              width: 160,
-              height: 160,
-            ),
-          ],
-        ),
-      ),
+          );
+        }
+
+        if (snapshot.hasData) {
+          return const ChatHomeScreen();
+        }
+
+        return const HomeScreen();
+      },
     );
   }
+}
+
+@override
+Widget build(BuildContext context) {
+  return Scaffold(
+    backgroundColor: Color.fromRGBO(37, 22, 21, 80),
+    body: Center(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          SvgPicture.asset(
+            'assets/images/Logo.svg',
+            width: 150,
+            height: 150,
+          ),
+          const SizedBox(height: 20),
+          Image.asset(
+            'assets/images/vg.png',
+            width: 160,
+            height: 160,
+          ),
+        ],
+      ),
+    ),
+  );
 }
 
 class HomeScreen extends StatefulWidget {
@@ -2715,7 +2720,7 @@ class _ProfilePageState extends State<Profilepage> {
                                       )
                                     : null,
                           ),
-                          child: _coverImage == null
+                          child: (_coverImage == null && _coverImageUrl == null)
                               ? Center(
                                   child: Showcase(
                                     key: _pfpKey,
@@ -3394,8 +3399,6 @@ class ExploreScreen extends StatefulWidget {
 }
 
 class _ExploreScreenState extends State<ExploreScreen> {
-  bool _isMenuOpen = false;
-
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -3409,45 +3412,6 @@ class _ExploreScreenState extends State<ExploreScreen> {
               image: DecorationImage(
                 image: AssetImage('assets/images/BaseBackground.png'),
                 fit: BoxFit.cover,
-              ),
-            ),
-          ),
-
-          // 🔹 SIDE MENU
-          AnimatedPositioned(
-            duration: const Duration(milliseconds: 300),
-            curve: Curves.easeInOut,
-            top: 0,
-            bottom: 0,
-            left: _isMenuOpen ? 0 : -260,
-            width: 260,
-            child: Material(
-              color: const Color.fromRGBO(45, 6, 9, 1),
-              elevation: 10,
-              child: SafeArea(
-                child: ListView(
-                  padding: const EdgeInsets.symmetric(vertical: 20),
-                  children: [
-                    const SizedBox(height: 20),
-                    ListTile(
-                      leading: const Icon(Icons.settings, color: Colors.white),
-                      title: const Text(
-                        'Settings',
-                        style: TextStyle(color: Colors.white),
-                      ),
-                      onTap: () {
-                        setState(() => _isMenuOpen = false);
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (_) => const SettingsScreen(),
-                          ),
-                        );
-                      },
-                    ),
-                    const Divider(color: Colors.white24),
-                  ],
-                ),
               ),
             ),
           ),
@@ -3471,9 +3435,12 @@ class _ExploreScreenState extends State<ExploreScreen> {
             color: Color.fromRGBO(255, 239, 227, 0.7),
           ),
           onPressed: () {
-            setState(() {
-              _isMenuOpen = !_isMenuOpen;
-            });
+            Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (_) => const SettingsScreen(),
+              ),
+            );
           },
         ),
         actions: [
@@ -3553,8 +3520,6 @@ class FeedScreen extends StatefulWidget {
 }
 
 class _FeedScreenState extends State<FeedScreen> {
-  bool _isMenuOpen = false;
-
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -3573,7 +3538,7 @@ class _FeedScreenState extends State<FeedScreen> {
           ),
 
           // 🔹 SIDE MENU
-          AnimatedPositioned(
+          /*AnimatedPositioned(
             duration: const Duration(milliseconds: 300),
             curve: Curves.easeInOut,
             top: 0,
@@ -3609,7 +3574,7 @@ class _FeedScreenState extends State<FeedScreen> {
                 ),
               ),
             ),
-          ),
+          ),*/
         ],
       ),
 
@@ -3630,9 +3595,12 @@ class _FeedScreenState extends State<FeedScreen> {
             color: Color.fromRGBO(255, 239, 227, 0.7),
           ),
           onPressed: () {
-            setState(() {
-              _isMenuOpen = !_isMenuOpen;
-            });
+            Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (_) => const SettingsScreen(),
+              ),
+            );
           },
         ),
         actions: [
@@ -3774,16 +3742,15 @@ class _ChatHomeScreenState extends State<ChatHomeScreen> {
             ),
           ],
           onTap: (index) {
-            setState(() {
-              _currentIndex = index;
-            });
-
             if (index == 0) {
               Navigator.push(
                 context,
-                MaterialPageRoute(
-                  builder: (_) => const ExploreScreen(),
-                ),
+                MaterialPageRoute(builder: (_) => const ExploreScreen()),
+              );
+            } else if (index == 1) {
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (_) => FeedScreen()),
               );
             }
           },
@@ -4292,6 +4259,12 @@ class ChatScreenState extends State<ChatScreen> {
   late ChatAuthor currentUser;
 
   final TextEditingController _messageController = TextEditingController();
+  final AudioRecorder _recorder = AudioRecorder();
+  final AudioPlayer _player = AudioPlayer();
+
+  bool _isRecording = false;
+
+  String? _recordPath;
 
   @override
   void initState() {
@@ -4316,6 +4289,9 @@ class ChatScreenState extends State<ChatScreen> {
   @override
   void dispose() {
     _messageController.dispose();
+    _player.dispose();
+    _recorder.dispose();
+
     super.dispose();
   }
 
@@ -4330,6 +4306,81 @@ class ChatScreenState extends State<ChatScreen> {
     }
   }
 
+  Future<void> _startRecording() async {
+    try {
+      if (await _recorder.hasPermission()) {
+        final dir = await getTemporaryDirectory();
+
+        _recordPath =
+            '${dir.path}/voice_${DateTime.now().millisecondsSinceEpoch}.m4a';
+
+        await _recorder.start(
+          const RecordConfig(),
+          path: _recordPath!,
+        );
+
+        setState(() {
+          _isRecording = true;
+        });
+      }
+    } catch (e) {
+      debugPrint("Error starting recording: $e");
+    }
+  }
+
+  Future<void> _stopRecording() async {
+    try {
+      final path = await _recorder.stop();
+
+      setState(() {
+        _isRecording = false;
+      });
+
+      if (path != null) {
+        await _uploadVoiceMessage(path);
+      }
+    } catch (e) {
+      debugPrint("Error stopping recording: $e");
+    }
+  }
+
+  Future<void> _uploadVoiceMessage(String path) async {
+    try {
+      final file = File(path);
+
+      final fileName = 'voice_${DateTime.now().millisecondsSinceEpoch}.m4a';
+
+      final ref = FirebaseStorage.instance
+          .ref()
+          .child('chat_voices')
+          .child(chatId)
+          .child(fileName);
+
+      await ref.putFile(file);
+
+      final audioUrl = await ref.getDownloadURL();
+
+      await FirebaseFirestore.instance
+          .collection('chats')
+          .doc(chatId)
+          .collection('messages')
+          .add({
+        'audioUrl': audioUrl,
+        'senderId': currentUser.id,
+        'timestamp': FieldValue.serverTimestamp(),
+        'type': 'audio',
+      });
+
+      await FirebaseFirestore.instance.collection('chats').doc(chatId).set({
+        'users': [currentUser.id, widget.targetContact.id],
+        'lastMessage': '🎤 Voice message',
+        'updatedAt': FieldValue.serverTimestamp(),
+      }, SetOptions(merge: true));
+    } catch (e) {
+      debugPrint("Error uploading voice message: $e");
+    }
+  }
+
   void _sendMessage(String text) {
     if (text.trim().isEmpty) return;
     FirebaseFirestore.instance
@@ -4340,6 +4391,7 @@ class ChatScreenState extends State<ChatScreen> {
       'text': text,
       'senderId': currentUser.id,
       'timestamp': FieldValue.serverTimestamp(),
+      'type': 'text',
     });
     FirebaseFirestore.instance.collection('chats').doc(chatId).set({
       'users': [currentUser.id, widget.targetContact.id],
@@ -4387,42 +4439,57 @@ class ChatScreenState extends State<ChatScreen> {
                   final messages = snapshot.data!.docs;
 
                   return ListView.builder(
-                    padding: const EdgeInsets.symmetric(
-                        horizontal: 12, vertical: 10),
-                    itemCount: messages.length,
-                    itemBuilder: (context, index) {
-                      final data =
-                          messages[index].data() as Map<String, dynamic>;
-                      final isMe = data['senderId'] == currentUser.id;
-                      final text = data['text'] ?? '';
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 12, vertical: 10),
+                      itemCount: messages.length,
+                      itemBuilder: (context, index) {
+                        final data =
+                            messages[index].data() as Map<String, dynamic>;
+                        final isMe = data['senderId'] == currentUser.id;
+                        final text = data['text'] ?? '';
+                        final audioUrl = data['audioUrl'];
+                        final type = data['type'] ?? 'text';
 
-                      return Align(
-                        alignment:
-                            isMe ? Alignment.centerRight : Alignment.centerLeft,
-                        child: Container(
-                          margin: const EdgeInsets.symmetric(vertical: 4),
-                          padding: const EdgeInsets.symmetric(
-                              horizontal: 14, vertical: 10),
-                          decoration: BoxDecoration(
-                            color: isMe
-                                ? const Color.fromRGBO(106, 41, 45, 1)
-                                : const Color.fromRGBO(58, 27, 45, 1),
-                            borderRadius: BorderRadius.only(
-                              topLeft: const Radius.circular(16),
-                              topRight: const Radius.circular(16),
-                              bottomLeft: Radius.circular(isMe ? 16 : 0),
-                              bottomRight: Radius.circular(isMe ? 0 : 16),
+                        return Align(
+                          alignment: isMe
+                              ? Alignment.centerRight
+                              : Alignment.centerLeft,
+                          child: Container(
+                            margin: const EdgeInsets.symmetric(vertical: 4),
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 14, vertical: 10),
+                            decoration: BoxDecoration(
+                              color: isMe
+                                  ? const Color.fromRGBO(106, 41, 45, 1)
+                                  : const Color.fromRGBO(58, 27, 45, 1),
+                              borderRadius: BorderRadius.only(
+                                topLeft: const Radius.circular(16),
+                                topRight: const Radius.circular(16),
+                                bottomLeft: Radius.circular(isMe ? 16 : 0),
+                                bottomRight: Radius.circular(isMe ? 0 : 16),
+                              ),
                             ),
+                            child: type == 'audio'
+                                ? IconButton(
+                                    icon: const Icon(
+                                      Icons.play_arrow,
+                                      color: Colors.white,
+                                    ),
+                                    onPressed: () async {
+                                      await _player.setUrl(audioUrl);
+                                      _player.play();
+                                    },
+                                  )
+                                : Text(
+                                    text,
+                                    style: const TextStyle(
+                                      color: Colors.white,
+                                      fontSize: 15,
+                                    ),
+                                  ),
                           ),
-                          child: Text(
-                            text,
-                            style: const TextStyle(
-                                color: Colors.white, fontSize: 15),
-                          ),
-                        ),
-                      );
-                    },
-                  );
+                        );
+                      });
                 },
               ),
             ),
@@ -4451,18 +4518,39 @@ class ChatScreenState extends State<ChatScreen> {
                     ),
                   ),
                   const SizedBox(width: 10),
-                  CircleAvatar(
-                    backgroundColor: const Color.fromRGBO(255, 239, 227, 1),
-                    child: IconButton(
-                      icon: const Icon(
-                        Icons.send,
-                        color: Colors.black,
+                  Row(
+                    children: [
+                      CircleAvatar(
+                        backgroundColor: Colors.redAccent,
+                        child: IconButton(
+                          icon: Icon(
+                            _isRecording ? Icons.stop : Icons.mic,
+                            color: Colors.white,
+                          ),
+                          onPressed: () async {
+                            if (_isRecording) {
+                              await _stopRecording();
+                            } else {
+                              await _startRecording();
+                            }
+                          },
+                        ),
                       ),
-                      onPressed: () {
-                        _sendMessage(_messageController.text);
-                        _messageController.clear();
-                      },
-                    ),
+                      const SizedBox(width: 8),
+                      CircleAvatar(
+                        backgroundColor: const Color.fromRGBO(255, 239, 227, 1),
+                        child: IconButton(
+                          icon: const Icon(
+                            Icons.send,
+                            color: Colors.black,
+                          ),
+                          onPressed: () {
+                            _sendMessage(_messageController.text);
+                            _messageController.clear();
+                          },
+                        ),
+                      ),
+                    ],
                   ),
                 ],
               ),
